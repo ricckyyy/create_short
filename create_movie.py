@@ -175,14 +175,8 @@ keywords = [
     "shadow moving alone, supernatural"
 ]
 
-# 普通の声
-# voice_file = generate_voice(script, speaker=1, pitch=0.0, speed=1.0, out_file="voice_normal.wav")
-
 # 低めの声
 voice_file = generate_voice(script, speaker_index=7, pitch=-0.5, speed=1)
-
-# 高めの声
-# voice_file = generate_voice(script, speaker=1, pitch=0.5, speed=1.1, out_file="voice_high.wav")
 
 # voice_file = generate_voice(script, speaker=1, out_file="shikoku_metatan.wav")
 create_video_with_keywords(script_lines, keywords, PEXELS_API_KEY, voice_file)
