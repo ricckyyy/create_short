@@ -13,6 +13,9 @@ VOICEVOX_API = "http://127.0.0.1:50021"
 # -------------------------
 # 字幕画像作成
 # -------------------------
+# -------------------------
+# 字幕画像作成（白文字＋黒縁）
+# -------------------------
 def create_subtitle_image(text, width=720, height=200, fontsize=30):
     font_path = "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"
     if os.name == "nt":
@@ -20,13 +23,26 @@ def create_subtitle_image(text, width=720, height=200, fontsize=30):
     font = ImageFont.truetype(font_path, fontsize)
     img = Image.new("RGBA", (width, height), (0,0,0,0))
     draw = ImageDraw.Draw(img)
+
+    # 20文字ごとに改行
     lines = [text[i:i+20] for i in range(0, len(text), 20)]
     y = (height - len(lines)*(fontsize+10))//2
+
     for line in lines:
         bbox = draw.textbbox((0,0), line, font=font)
-        w = bbox[2]-bbox[0]; x = (width-w)//2
+        w = bbox[2]-bbox[0]
+        x = (width-w)//2
+
+        # 黒い縁取りを描画（上下左右＋斜め）
+        for dx in [-2, -1, 0, 1, 2]:
+            for dy in [-2, -1, 0, 1, 2]:
+                if dx != 0 or dy != 0:
+                    draw.text((x+dx, y+dy), line, font=font, fill="black")
+
+        # 白文字を上に描画
         draw.text((x, y), line, font=font, fill="white")
         y += fontsize + 10
+
     return np.array(img)
 
 def get_speakers():
@@ -120,6 +136,7 @@ def download_video(url, filename):
 # -------------------------
 # 台本とキーワード対応版で動画作成
 # -------------------------
+
 def create_video_with_keywords(script_lines, keywords, api_key, voice_file, output_file="final_video.mp4"):
     narration = AudioFileClip(voice_file)
     dur_per_line = narration.duration / len(script_lines)
@@ -129,20 +146,19 @@ def create_video_with_keywords(script_lines, keywords, api_key, voice_file, outp
         # Pexels動画取得
         urls = search_pexels_video(kw, api_key)
         vid_file = download_video(urls[0] if urls else "", f"clip{i}.mp4")
-        
-        # 動画クリップを縦長にして黒背景に中央配置
+
+        # 動画クリップ準備
         if vid_file:
             clip_raw = VideoFileClip(vid_file)
             clip_raw = clip_raw.subclipped(0, min(dur_per_line, clip_raw.duration))
-            # 黒背景
             bg = ColorClip((720,1280), (0,0,0), duration=clip_raw.duration)
             clip = CompositeVideoClip([bg, clip_raw.resized(height=1280).with_position("center")])
         else:
             clip = ColorClip((720,1280), (0,0,0), duration=dur_per_line)
 
-        # 字幕
+        # 字幕（縁付き）
         img = create_subtitle_image(line)
-        subtitle = ImageClip(img, transparent=True).with_duration(dur_per_line).with_position("center")
+        subtitle = ImageClip(img, transparent=True).with_duration(dur_per_line).with_position(("center","bottom"))
         clip = CompositeVideoClip([clip, subtitle])
         clips.append(clip)
 
@@ -153,30 +169,34 @@ def create_video_with_keywords(script_lines, keywords, api_key, voice_file, outp
 # 実行例
 # -------------------------
 PEXELS_API_KEY = "QqcFiUzxOsDiOYP3sUQyty0hKhTGdzgBQdPQ8nymB7Y1KaXkYocVkctS"
-script = """
-深夜、あなたは一人で部屋にいました。
-スマホを見ていると、遠くから子守唄のような音が聞こえてきます。
-耳を澄ますと、窓の外から囁く声が…
-好奇心で窓の外を覗くと、誰もいません。
-でも、背後で微かに「ねえ、遊ぼう…」と囁く声。
-振り返ると、自分の影が勝手に動いていました。
-あなたは恐怖で凍りつきます。
-その瞬間、鏡に映る自分の姿が微笑みながら手を振っています。
-"""
-script_lines = script.strip().split("\n")
 
-# 台本行ごとのキーワード
-keywords = [
-    "room alone night, creepy",
-    "lullaby from distance, scary",
-    "whisper outside window, mysterious",
-    "looking outside, empty night, spooky",
-    "whisper behind, eerie, ghost",
-    "shadow moving alone, supernatural"
-]
+script = """
+【映画紹介：ショーシャンクの空に】
+無実の罪で投獄された銀行員アンディ。
+絶望的な環境の中でも希望を失わず、
+仲間と友情を築きながら自由を求め続けます。
+
+この映画は「希望を持つことの強さ」を描いた名作。
+公開当初はヒットしませんでしたが、
+口コミやランキングで評価が高まり、
+今では不朽の名作と呼ばれています。
+
+観終わった後に必ず勇気をもらえる、
+映画ファン必見の作品です。
+"""
+
+# 素材収集用英語キーワード（Pexels向け）
+keywords = ["prison", "friendship", "hope", "cinematic", "freedom"]
+
+# ハッシュタグ（コピペ用）
+#映画紹介 #名作映画 #ショーシャンクの空に #おすすめ映画 #映画好き
+
+
+script_lines = [line.strip() for line in script.split("\n") if line.strip()]
 
 # 低めの声
-voice_file = generate_voice(script, speaker_index=7, pitch=-0.5, speed=1)
+# voice_file = generate_voice(script, speaker_index=7, pitch=-0.5, speed=1)
+voice_file = generate_voice(script, speaker_index=1, pitch=0.0, speed=1)
 
 # voice_file = generate_voice(script, speaker=1, out_file="shikoku_metatan.wav")
 create_video_with_keywords(script_lines, keywords, PEXELS_API_KEY, voice_file)
