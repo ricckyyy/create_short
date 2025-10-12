@@ -11,9 +11,6 @@ import os
 VOICEVOX_API = "http://127.0.0.1:50021"
 
 # -------------------------
-# 字幕画像作成
-# -------------------------
-# -------------------------
 # 字幕画像作成（白文字＋黒縁）
 # -------------------------
 def create_subtitle_image(text, width=720, height=200, fontsize=30):
@@ -33,9 +30,9 @@ def create_subtitle_image(text, width=720, height=200, fontsize=30):
         w = bbox[2]-bbox[0]
         x = (width-w)//2
 
-        # 黒い縁取りを描画（上下左右＋斜め）
-        for dx in [-2, -1, 0, 1, 2]:
-            for dy in [-2, -1, 0, 1, 2]:
+        # 黒い縁取りを描画
+        for dx in [-2,-1,0,1,2]:
+            for dy in [-2,-1,0,1,2]:
                 if dx != 0 or dy != 0:
                     draw.text((x+dx, y+dy), line, font=font, fill="black")
 
@@ -45,41 +42,18 @@ def create_subtitle_image(text, width=720, height=200, fontsize=30):
 
     return np.array(img)
 
+# -------------------------
+# VOICEVOX: 話者リスト取得
+# -------------------------
 def get_speakers():
-    url = "http://localhost:50021/speakers"
+    url = f"{VOICEVOX_API}/speakers"
     res = requests.get(url)
-    if res.status_code != 200:
-        raise Exception("VOICEVOX speakers API failed")
+    res.raise_for_status()
     return res.json()
 
 # -------------------------
-# VOICEVOX音声生成
+# VOICEVOX: 音声生成
 # -------------------------
-# VOICEVOX音声生成（ピッチや速度も調整可能）
-# def generate_voice(text, speaker=1, pitch=0.0, speed=1.0, out_file="voice.wav"):
-#     """
-#     speaker: VOICEVOX話者ID
-#     pitch: ピッチ補正（-1.0〜1.0, 0がデフォルト）
-#     speed: 話速補正（0.5〜2.0くらい）
-#     """
-#     # audio_query
-#     res = requests.post(f"{VOICEVOX_API}/audio_query", params={"text": text, "speaker": speaker})
-#     if res.status_code != 200:
-#         raise Exception("VOICEVOX audio_query failed")
-#     data = res.json()
-
-#     # ピッチ・速度を変更
-#     data["speedScale"] = speed  # 話速
-#     data["pitchScale"] = pitch  # ピッチ
-#     # 必要に応じて他のパラメータも変更可能
-#     # data["intonationScale"], data["volumeScale"], data["prePhonemeLength"], data["postPhonemeLength"]
-
-#     # synthesis
-#     res2 = requests.post(f"{VOICEVOX_API}/synthesis", json=data, params={"speaker": speaker})
-#     with open(out_file, "wb") as f:
-#         f.write(res2.content)
-#     return out_file
-
 def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, filename="voice.wav"):
     speakers = get_speakers()
     if speaker_index >= len(speakers):
@@ -92,26 +66,27 @@ def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, 
         style_index = 0
     style_id = speaker["styles"][style_index]["id"]
 
-    url_query = f"http://localhost:50021/audio_query"
-    params = {"text": text, "speaker": style_id}
-    res = requests.post(url_query, params=params)
-    if res.status_code != 200:
-        raise Exception("VOICEVOX audio_query failed")
+    # audio_query
+    url_query = f"{VOICEVOX_API}/audio_query"
+    res = requests.post(url_query, params={"text": text, "speaker": style_id})
+    res.raise_for_status()
     audio_query = res.json()
 
+    # ピッチ・速度調整
     audio_query["speedScale"] = speed
     audio_query["pitchScale"] = pitch
 
-    url_speech = f"http://localhost:50021/synthesis?speaker={style_id}"
+    # synthesis
+    url_speech = f"{VOICEVOX_API}/synthesis?speaker={style_id}"
     res2 = requests.post(url_speech, json=audio_query)
     with open(filename, "wb") as f:
         f.write(res2.content)
-    
+
     print(f"✅ 音声生成完了: {filename} （{speaker_name} / style={speaker['styles'][style_index]['name']})")
-    return filename  # ターミナル用はファイルパスを返すだけ
+    return filename
 
 # -------------------------
-# Pexelsから動画URL取得
+# Pexels: 動画検索
 # -------------------------
 def search_pexels_video(query, api_key, max_results=1):
     headers = {"Authorization": api_key}
@@ -134,33 +109,47 @@ def download_video(url, filename):
     return filename
 
 # -------------------------
-# 台本とキーワード対応版で動画作成
+# 台本＋字幕つき動画生成
 # -------------------------
-
 def create_video_with_keywords(script_lines, keywords, api_key, voice_file, output_file="final_video.mp4"):
     narration = AudioFileClip(voice_file)
-    dur_per_line = narration.duration / len(script_lines)
+    total_duration = narration.duration
+    dur_per_line = total_duration / len(script_lines)
     clips = []
 
-    for i, (line, kw) in enumerate(zip(script_lines, keywords)):
-        # Pexels動画取得
+    # 動画クリップを取得
+    video_files = []
+    for i, kw in enumerate(keywords):
         urls = search_pexels_video(kw, api_key)
         vid_file = download_video(urls[0] if urls else "", f"clip{i}.mp4")
+        video_files.append(vid_file)
 
-        # 動画クリップ準備
+    # 各台本行に動画を割り当て
+    for idx, line in enumerate(script_lines):
+        vid_file = video_files[idx] if idx < len(video_files) else None
         if vid_file:
             clip_raw = VideoFileClip(vid_file)
-            clip_raw = clip_raw.subclipped(0, min(dur_per_line, clip_raw.duration))
-            bg = ColorClip((720,1280), (0,0,0), duration=clip_raw.duration)
-            clip = CompositeVideoClip([bg, clip_raw.resized(height=1280).with_position("center")])
+            clip = clip_raw.subclipped(0, min(dur_per_line, clip_raw.duration))
+            bg = ColorClip((720,1280), (0,0,0), duration=clip.duration)
+            clip = CompositeVideoClip([bg, clip.resized(height=1280).with_position("center")])
         else:
+            # 足りない場合は黒背景
             clip = ColorClip((720,1280), (0,0,0), duration=dur_per_line)
 
-        # 字幕（縁付き）
+        # 字幕
         img = create_subtitle_image(line)
-        subtitle = ImageClip(img, transparent=True).with_duration(dur_per_line).with_position(("center","bottom"))
+        subtitle = ImageClip(img, transparent=True).with_duration(dur_per_line).with_position("center")
         clip = CompositeVideoClip([clip, subtitle])
         clips.append(clip)
+
+    # ナレーションの長さに合わせて最後の動画を延長
+    current_total = sum(c.duration for c in clips)
+    if current_total < total_duration:
+        remain = total_duration - current_total
+        filler = ColorClip((720,1280), (0,0,0), duration=remain)
+        last_img = create_subtitle_image(script_lines[-1])
+        subtitle = ImageClip(last_img, transparent=True).with_duration(remain).with_position("center")
+        clips.append(CompositeVideoClip([filler, subtitle]))
 
     final = concatenate_videoclips(clips, method="compose").with_audio(narration)
     final.write_videofile(output_file, fps=24)
@@ -170,33 +159,45 @@ def create_video_with_keywords(script_lines, keywords, api_key, voice_file, outp
 # -------------------------
 PEXELS_API_KEY = "QqcFiUzxOsDiOYP3sUQyty0hKhTGdzgBQdPQ8nymB7Y1KaXkYocVkctS"
 
-script = """
-【映画紹介：ショーシャンクの空に】
-無実の罪で投獄された銀行員アンディ。
-絶望的な環境の中でも希望を失わず、
-仲間と友情を築きながら自由を求め続けます。
 
-この映画は「希望を持つことの強さ」を描いた名作。
-公開当初はヒットしませんでしたが、
-口コミやランキングで評価が高まり、
-今では不朽の名作と呼ばれています。
+# --- 各アカウント用台本・キーワード ---
+accounts = [
+    {
+        "name": "心理テストラボ",
+        "script": """
+あなたの本当の性格は？3つの心理テストで診断！\n\n1つ目：好きな色は何ですか？\n→ 赤なら情熱的、青なら冷静、黄色なら社交的な傾向があります。\n\n2つ目：休日はどんな過ごし方が好き？\n→ 家でゆっくり派は内向的、外出派は外交的な性格が多いです。\n\n3つ目：初対面の人と話すとき、緊張しますか？\n→ 緊張する人は慎重派、すぐ打ち解ける人は積極派です。\n\nあなたはどのタイプでしたか？\nコメントで教えてください！\n""",
+        "keywords": ["psychology", "personality", "test", "color", "holiday", "communication", "introvert", "extrovert", "diagnosis", "quiz"],
+        "output": "video_psychology.mp4"
+    },
+    {
+        "name": "闇夜の語り部",
+        "script": """
+地図から消えた村の謎…本当に存在した都市伝説\n\n日本の山奥に、地図から消えた村があるという噂が広まっています。\nその村に足を踏み入れた人は、二度と戻ってこないと言われています。\n実際に行方不明になった人の話や、村の周辺で見つかった謎の遺留品。\n地元の人も村の存在を語りたがらず、真相は闇の中。\nあなたはこの都市伝説、信じますか？\n""",
+        "keywords": ["legend", "mystery", "village", "disappear", "forest", "Japan", "rumor", "missing", "dark", "secret"],
+        "output": "video_legend.mp4"
+    },
+    {
+        "name": "映画紹介",
+        "script": """
+人生が変わる感動作！おすすめ映画『フォレスト・ガンプ』\n\n今日紹介する映画は『フォレスト・ガンプ』。\n知的障害を持つフォレストが、純粋な心で数々の奇跡を起こしていきます。\nアメリカの歴史的な出来事に巻き込まれながらも、前向きに生きる姿が多くの人に勇気を与えます。\n名言や名シーンが満載で、観る人の心に深く残る名作です。\n人生に悩んだとき、きっと力をもらえる映画です！\n""",
+        "keywords": ["movie", "inspiration", "life", "miracle", "history", "America", "drama", "courage", "classic", "quote"],
+        "output": "video_movie.mp4"
+    }
+]
 
-観終わった後に必ず勇気をもらえる、
-映画ファン必見の作品です。
-"""
+# --- 3動画を連続生成 ---
+for acc in accounts:
+    print(f"\n=== {acc['name']} 動画生成 ===")
+    script_lines = [line.strip() for line in acc["script"].split("\n") if line.strip()]
+    # アカウントごとに話者・ピッチを設定
+    if acc["name"] == "闇夜の語り部":
+        speaker_index = 7
+        pitch = -0.5
+    else:
+        speaker_index = 1
+        pitch = 0
+    voice_file = generate_voice(acc["script"], speaker_index=speaker_index, pitch=pitch, speed=1.0, filename=f"voice_{acc['output'].replace('.mp4','.wav')}")
+    create_video_with_keywords(script_lines, acc["keywords"], PEXELS_API_KEY, voice_file, output_file=acc["output"])
+    print(f"✅ {acc['name']} 動画生成完了: {acc['output']}")
 
-# 素材収集用英語キーワード（Pexels向け）
-keywords = ["prison", "friendship", "hope", "cinematic", "freedom"]
-
-# ハッシュタグ（コピペ用）
-#映画紹介 #名作映画 #ショーシャンクの空に #おすすめ映画 #映画好き
-
-
-script_lines = [line.strip() for line in script.split("\n") if line.strip()]
-
-# 低めの声
-# voice_file = generate_voice(script, speaker_index=7, pitch=-0.5, speed=1)
-voice_file = generate_voice(script, speaker_index=1, pitch=0.0, speed=1)
-
-# voice_file = generate_voice(script, speaker=1, out_file="shikoku_metatan.wav")
-create_video_with_keywords(script_lines, keywords, PEXELS_API_KEY, voice_file)
+print("✅ 動画生成完了")
