@@ -1,11 +1,14 @@
 # --- 必要ライブラリ ---
 # pip install moviepy pydub requests
 
+import os
+os.makedirs("output", exist_ok=True)
+
 import requests
 from moviepy import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ColorClip
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-import os
+import shutil
 
 # VOICEVOX Engine API
 VOICEVOX_API = "http://127.0.0.1:50021"
@@ -165,28 +168,32 @@ accounts = [
     {
         "name": "心理テストラボ",
         "script": """
-あなたの本当の性格は？3つの心理テストで診断！\n\n1つ目：好きな色は何ですか？\n→ 赤なら情熱的、青なら冷静、黄色なら社交的な傾向があります。\n\n2つ目：休日はどんな過ごし方が好き？\n→ 家でゆっくり派は内向的、外出派は外交的な性格が多いです。\n\n3つ目：初対面の人と話すとき、緊張しますか？\n→ 緊張する人は慎重派、すぐ打ち解ける人は積極派です。\n\nあなたはどのタイプでしたか？\nコメントで教えてください！\n""",
-        "keywords": ["psychology", "personality", "test", "color", "holiday", "communication", "introvert", "extrovert", "diagnosis", "quiz"],
-        "output": "video_psychology.mp4"
+あなたのストレス耐性は？3つの質問で診断！\n\n1つ目：忙しい時、どんな気分になりますか？\n→ 焦る人はストレスを感じやすい傾向があります。\n\n2つ目：悩みがあるとき、誰かに相談しますか？\n→ 相談する人はストレスを溜めにくいです。\n\n3つ目：休日の過ごし方は？\n→ アクティブ派はストレス発散が得意です。\n\nあなたはストレスに強いタイプ？コメントで教えてください！\n""",
+        "keywords": ["stress", "psychology", "diagnosis", "busy", "feeling", "consult", "holiday", "active", "test", "resilience"],
+        "output": "output/3_video_psychology.mp4"
     },
     {
         "name": "闇夜の語り部",
         "script": """
-地図から消えた村の謎…本当に存在した都市伝説\n\n日本の山奥に、地図から消えた村があるという噂が広まっています。\nその村に足を踏み入れた人は、二度と戻ってこないと言われています。\n実際に行方不明になった人の話や、村の周辺で見つかった謎の遺留品。\n地元の人も村の存在を語りたがらず、真相は闇の中。\nあなたはこの都市伝説、信じますか？\n""",
-        "keywords": ["legend", "mystery", "village", "disappear", "forest", "Japan", "rumor", "missing", "dark", "secret"],
-        "output": "video_legend.mp4"
+消えたトンネルの噂…本当にあった都市伝説\n\n山奥にある古いトンネル。\n夜中に通ると、出口が消えてしまうという噂が広まっています。\n実際に行方不明になった人の話や、トンネル内で聞こえる謎の声。\n地元では「絶対に夜は通るな」と言われている場所です。\nあなたはこの都市伝説、信じますか？\n""",
+        "keywords": ["tunnel", "disappear", "legend", "mountain", "night", "mystery", "voice", "fear", "rumor", "truth"],
+        "output": "output/1_video_legend.mp4"
     },
     {
         "name": "映画紹介",
         "script": """
-人生が変わる感動作！おすすめ映画『フォレスト・ガンプ』\n\n今日紹介する映画は『フォレスト・ガンプ』。\n知的障害を持つフォレストが、純粋な心で数々の奇跡を起こしていきます。\nアメリカの歴史的な出来事に巻き込まれながらも、前向きに生きる姿が多くの人に勇気を与えます。\n名言や名シーンが満載で、観る人の心に深く残る名作です。\n人生に悩んだとき、きっと力をもらえる映画です！\n""",
-        "keywords": ["movie", "inspiration", "life", "miracle", "history", "America", "drama", "courage", "classic", "quote"],
-        "output": "video_movie.mp4"
+天才だけど心に傷を抱えた青年ウィル。彼の才能を見抜いた心理学者との出会いが、人生を大きく変えていきます。\n友情、愛、そして自分自身と向き合う感動のヒューマンドラマ。\n“君は自分の人生をどう生きる？”\n心に響く名言と、温かい人間ドラマが詰まった名作です。\nぜひ一度観てみてください！\n""",
+        "keywords": ["youth", "music", "band", "school", "friendship", "festival", "blue hearts", "drama", "japan", "energy"],
+        "output": "output/2_video_movie.mp4"
     }
 ]
 
-# --- 3動画を連続生成 ---
+# --- 生成したいアカウント名を指定 ---
+target_name = None  # 例: "映画紹介" など。Noneなら全て生成
+
 for acc in accounts:
+    if target_name is not None and acc["name"] != target_name:
+        continue
     print(f"\n=== {acc['name']} 動画生成 ===")
     script_lines = [line.strip() for line in acc["script"].split("\n") if line.strip()]
     # アカウントごとに話者・ピッチを設定
@@ -196,7 +203,10 @@ for acc in accounts:
     else:
         speaker_index = 1
         pitch = 0
-    voice_file = generate_voice(acc["script"], speaker_index=speaker_index, pitch=pitch, speed=1.0, filename=f"voice_{acc['output'].replace('.mp4','.wav')}")
+    # 音声ファイルはカレントディレクトリに出力
+    voice_file_path = acc['output'].replace('output/', '').replace('.mp4', '.wav')
+    voice_file = generate_voice(acc["script"], speaker_index=speaker_index, pitch=pitch, speed=1.0, filename=voice_file_path)
+    # 動画ファイルのみoutputフォルダに出力
     create_video_with_keywords(script_lines, acc["keywords"], PEXELS_API_KEY, voice_file, output_file=acc["output"])
     print(f"✅ {acc['name']} 動画生成完了: {acc['output']}")
 
