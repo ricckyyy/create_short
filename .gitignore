@@ -16,3 +16,7 @@ node_modules/
 myenv/
 __pycache__/
 .sudo_as_admin_successful
+voicevox_engine-linux-cpu-x64-0.24.1/
+.npm
+.local
+.wget-hsts

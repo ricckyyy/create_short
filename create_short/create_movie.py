@@ -168,25 +168,29 @@ accounts = [
     {
         "name": "心理テストラボ",
         "script": """
-あなたのストレス耐性は？3つの質問で診断！\n\n1つ目：忙しい時、どんな気分になりますか？\n→ 焦る人はストレスを感じやすい傾向があります。\n\n2つ目：悩みがあるとき、誰かに相談しますか？\n→ 相談する人はストレスを溜めにくいです。\n\n3つ目：休日の過ごし方は？\n→ アクティブ派はストレス発散が得意です。\n\nあなたはストレスに強いタイプ？コメントで教えてください！\n""",
-        "keywords": ["stress", "psychology", "diagnosis", "busy", "feeling", "consult", "holiday", "active", "test", "resilience"],
-        "output": "output/3_video_psychology.mp4"
+【驚愕】1分で分かるあなたの恋愛観診断！\nあなたは今、恋愛で悩んでいませんか？\n3つの質問であなたの運命がわかります！\n1つ目：好きな人からLINEが来たら...\n①すぐ返信 ②じっくり考える ③気分で対応\nえっ！まさかあなた...！？\nそして2問目の質問で運命が変わる...\n実は2番を選んだ人には、意外な結果が！\nフォロー＆いいねで次回の質問へ\n結果を知りたい人は@shinri_labo まで！\n""",
+        "keywords": ["love", "psychology", "test", "personality", "diagnosis", "relationship", "fortune", "line", "romance", "future"],
+        "output": "output/shinrigaku.mp4"
     },
     {
         "name": "闇夜の語り部",
         "script": """
-消えたトンネルの噂…本当にあった都市伝説\n\n山奥にある古いトンネル。\n夜中に通ると、出口が消えてしまうという噂が広まっています。\n実際に行方不明になった人の話や、トンネル内で聞こえる謎の声。\n地元では「絶対に夜は通るな」と言われている場所です。\nあなたはこの都市伝説、信じますか？\n""",
-        "keywords": ["tunnel", "disappear", "legend", "mountain", "night", "mystery", "voice", "fear", "rumor", "truth"],
-        "output": "output/1_video_legend.mp4"
+⚠️この動画は深夜の視聴を推奨します\n都内某所で起きた本当の怖い話...\nコンビニの夜勤中、不思議な出来事が\n誰もいない店内なのに、レジの呼び出し音が\nカメラを確認すると、レジ前に見知らぬ女性が\nでも、店内には誰もいないはず...\n監視カメラに映っていたものは？\n続きが気になる人はフォロー必須！\n毎週火曜の深夜に投稿中\nもっと怖い話は@yami_kataribe で！\n""",
+        "keywords": ["horror", "ghost", "convenience store", "night", "mystery", "scary", "urban legend", "security camera", "supernatural", "true story"],
+        "output": "output/kowaihanashi.mp4"
     },
     {
         "name": "映画紹介",
         "script": """
-天才だけど心に傷を抱えた青年ウィル。彼の才能を見抜いた心理学者との出会いが、人生を大きく変えていきます。\n友情、愛、そして自分自身と向き合う感動のヒューマンドラマ。\n“君は自分の人生をどう生きる？”\n心に響く名言と、温かい人間ドラマが詰まった名作です。\nぜひ一度観てみてください！\n""",
-        "keywords": ["youth", "music", "band", "school", "friendship", "festival", "blue hearts", "drama", "japan", "energy"],
-        "output": "output/2_video_movie.mp4"
+全世界で話題沸騰！涙腺崩壊の傑作が解禁\nNetflix新作『あの日の約束』\n幼なじみの親友を事故で亡くした主人公\nある日、10年前からの手紙が届く...\nこの映画、最後の5分で人生観が変わります\n世界中で"心が浄化された"と話題に\nここからが本当の見どころ...\n予想を超える結末の考察を待ってます！\nフォローで次回作もお見逃しなく\nレビューは@movie_review で配信中！\n""",
+        "keywords": ["movie", "netflix", "drama", "friendship", "letter", "emotion", "review", "recommendation", "twist", "masterpiece"],
+        "output": "output/movie.mp4"
     }
 ]
+
+
+# 使い方：
+# accounts = new_accounts  # 新しい収益化向け台本に差し替え
 
 # --- 生成したいアカウント名を指定 ---
 target_name = None  # 例: "映画紹介" など。Noneなら全て生成
