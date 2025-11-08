@@ -12,8 +12,10 @@ if ! tmux has-session -t voicevox 2>/dev/null; then
     sleep 5  # 起動待機
 fi
 
-# 仮想環境を有効化して実行
-source ~/myenv/bin/activate
+#!/bin/bash
+
+# 仮想環境のアクティベート
+source /home/rt/create_short/venv/bin/activate
 
 # 日次生成スクリプト実行
 python3 daily_generation.py

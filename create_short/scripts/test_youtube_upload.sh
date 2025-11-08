@@ -9,7 +9,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # 仮想環境をアクティベート
-source ~/myenv/bin/activate
+source /home/rt/create_short/venv/bin/activate
 
 echo "🧪 YouTube アップロードテスト"
 echo "================================"

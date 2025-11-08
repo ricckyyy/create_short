@@ -7,4 +7,4 @@ if ! tmux has-session -t voicevox 2>/dev/null; then
     sleep 1
 fi
 
-source ~/myenv/bin/activate
+source /home/rt/create_short/venv/bin/activate

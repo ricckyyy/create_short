@@ -1,6 +1,6 @@
 """
 AI を使った台本自動生成スクリプト
-OpenAI API または Anthropic Claude API を使用
+OpenAI API / Anthropic Claude API / Ollama (ローカルLLM) を使用
 """
 
 import os
@@ -19,12 +19,18 @@ from config import (
 init_directories()
 
 # 使用するAI API を選択（環境変数から取得）
+# export USE_OLLAMA=true                   # Ollama (完全無料) - デフォルト有効
 # export OPENAI_API_KEY="your-key"         # OpenAI
 # export ANTHROPIC_API_KEY="your-key"      # Anthropic
+USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() not in ("false", "0", "no")
 USE_OPENAI = os.getenv("OPENAI_API_KEY") is not None
 USE_ANTHROPIC = os.getenv("ANTHROPIC_API_KEY") is not None
 
-if USE_OPENAI:
+if USE_OLLAMA:
+    import requests
+    OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+elif USE_OPENAI:
     import openai
     openai.api_key = os.getenv("OPENAI_API_KEY")
 elif USE_ANTHROPIC:
@@ -97,14 +103,19 @@ ACCOUNT_PROMPTS = {
     },
     
     "映画紹介": {
-        "system": "あなたはTikTok/YouTube Shorts向けの映画紹介コンテンツを作成するプロフェッショナルです。",
+        "system": "あなたはTikTok/YouTube Shorts向けの映画紹介コンテンツを作成するプロフェッショナルです。実在する映画のみを紹介してください。",
         "prompt": """
 視聴維持率を最大化する映画紹介動画の台本を作成してください。
+
+【絶対条件】
+- 必ず実在する有名な映画を1作品選んで紹介すること
+- 架空の映画タイトルは絶対に使用禁止
+- 映画タイトルは『』で囲むこと
+- おすすめ例: シックス・センス、君の名は。、インセプション、ショーシャンクの空に、タイタニック、千と千尋の神隠し
 
 【要件】
 - 10行（各行が1シーン）
 - 冒頭2行で映画の魅力を提示
-- 架空の映画でも実在の映画でもOK
 - ネタバレ厳禁のティーザー風
 - どんでん返しや意外な要素を匂わす
 - 最後にフォロー促進
@@ -117,9 +128,19 @@ ACCOUNT_PROMPTS = {
 【フォーマット】
 各行を\\nで区切ったテキストのみを出力してください。説明は不要です。
 
+必ず以下の形式で:
+この映画、[感想]
+『[実在する映画タイトル]』[質問や説明]
+[映画の内容1]
+[映画の内容2]
+...
+フォローで[CTA]
+
 例）
 この映画、ラスト5分で全てひっくり返る
-今話題の『時間泥棒』知ってる？
+『シックス・センス』観た人いる？
+主人公は死者が見える少年
+誰にも信じてもらえない苦しみ
 ...（続く）
 
 台本:
@@ -127,6 +148,87 @@ ACCOUNT_PROMPTS = {
         "keywords": ["mystery movie", "plot twist", "cinema", "thriller", "suspense film", "movie review", "spoiler free", "must watch", "hidden gem", "masterpiece"]
     }
 }
+
+
+def generate_script_with_ollama(account_name):
+    """Ollama (ローカルLLM) で台本生成"""
+    config = ACCOUNT_PROMPTS[account_name]
+    
+    # 明確な例を含めて品質向上
+    example = """例:
+この心理テスト、当たりすぎてヤバい
+1つだけ質問させてください
+今すぐ食べたいものは？
+①甘いもの ②辛いもの ③しょっぱいもの
+これであなたの性格が丸わかり
+①を選んだあなた...実は寂しがり屋
+②は情熱的で行動派のタイプ
+③を選んだ人、コメントで教えて
+フォローで毎日診断配信中"""
+    
+    prompt = f"""{config['system']}
+
+{config['prompt']}
+
+{example}
+
+上記の例のように、必ず以下のルールを守ってください:
+1. 10行ちょうどで書く
+2. 各行は短く、テンポよく
+3. 冒頭で引き込む
+4. 最後はフォロー促進
+5. 「台本:」などの余計な文字は書かない
+6. 例や説明は一切不要
+
+それでは、{account_name}向けの台本を10行で書いてください:"""
+    
+    try:
+        response = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 400,
+                    "top_p": 0.9,
+                    "repeat_penalty": 1.1
+                }
+            },
+            timeout=90
+        )
+        response.raise_for_status()
+        result = response.json()
+        script = result.get("response", "").strip()
+        
+        if not script:
+            raise ValueError("Ollama returned empty response")
+        
+        # クリーニング
+        lines = []
+        for line in script.split('\n'):
+            line = line.strip()
+            # 番号付きリストや不要な接頭辞を削除
+            if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
+                line = line.split('.', 1)[1].strip()
+            if line and not line.startswith(('台本', '以下', '例:', '---')):
+                lines.append(line)
+        
+        # 10行に調整
+        if len(lines) > 10:
+            lines = lines[:10]
+        elif len(lines) < 8:  # 8行未満は品質が悪いと判断
+            raise ValueError(f"Generated only {len(lines)} valid lines")
+        elif len(lines) < 10:
+            # 9行の場合は最後にフォロー促進を追加
+            lines.append("フォローで毎日更新中")
+        
+        return '\n'.join(lines)
+        
+    except Exception as e:
+        print(f"⚠️ Ollama エラー: {e}")
+        raise
 
 
 def generate_script_with_openai(account_name):
@@ -176,8 +278,9 @@ def generate_script_fallback(account_name):
             """3日前から部屋で足音がする\n夜中の3時、必ず同じ時間\n誰もいないのに廊下を歩く音\n昨日、勇気を出して確認した\n何もいない...はずだった\nでも床に濡れた足跡\nしかもだんだん近づいてくる\n今夜も3時が来る\n助けて\nこれ、どうしたらいい?"""
         ],
         "映画紹介": [
-            """このラスト、鳥肌止まらない\n『記憶の檻』観た人いる?\n主人公は目覚めると記憶喪失\n毎日メモだけが唯一の手がかり\nでも誰かがメモを書き換えてる\n信じられるのは自分だけ\nそして衝撃のラスト15秒\n全員が涙した名シーン\n映画館で観て欲しい\nフォローで毎週おすすめ紹介""",
-            """予告編だけで泣いた\n『最後の約束』が超話題\n余命宣告された主人公が\n大切な人に嘘をつく理由\nタイムリミットは30日\n真実を知った時、あなたは?\n2回観ないと気づかない伏線\nこの映画、人生変わる\nネタバレ厳禁で広めて\n新作情報はフォローから"""
+            """このラスト、鳥肌止まらない\n『シックス・センス』観た人いる?\n主人公は死者が見える少年\n誰にも信じてもらえない苦しみ\nでも心理学者だけが寄り添う\nそして衝撃のラスト5分\n全てがひっくり返る瞬間\n2回観ないと気づかない伏線\n映画史に残る名作\nフォローで毎週おすすめ紹介""",
+            """予告編だけで泣いた\n『君の名は。』が超話題\n入れ替わる二人の運命\n会いたいのに会えない理由\nタイムリミットは隕石落下\n真実を知った時、あなたは?\n最後の「好きだ」で涙腺崩壊\nこの映画、人生変わる\nまだ観てない人は今すぐ\n新作情報はフォローから""",
+            """この映画、全てひっくり返る\n『インセプション』知ってる?\n夢の中に侵入する泥棒\n現実と夢の境界が曖昧に\nラストシーンのコマは?\n今も議論が絶えない結末\n3回観ても新発見がある\n映画ファン必見の傑作\nディカプリオ最高傑作\nフォローで名作を紹介中"""
         ]
     }
     
@@ -187,17 +290,20 @@ def generate_script_fallback(account_name):
 def generate_script(account_name):
     """台本を生成（利用可能なAPIを自動選択）"""
     try:
-        if USE_OPENAI:
+        if USE_OLLAMA:
+            print(f"🦙 Ollama ({OLLAMA_MODEL}) で {account_name} の台本を生成中...")
+            return generate_script_with_ollama(account_name)
+        elif USE_OPENAI:
             print(f"🤖 OpenAI GPT-4 で {account_name} の台本を生成中...")
             return generate_script_with_openai(account_name)
         elif USE_ANTHROPIC:
             print(f"🤖 Claude で {account_name} の台本を生成中...")
             return generate_script_with_anthropic(account_name)
         else:
-            print(f"⚠️ API未設定。テンプレートから {account_name} の台本を選択...")
+            print(f"⚠️ AI未設定。テンプレートから {account_name} の台本を選択...")
             return generate_script_fallback(account_name)
     except Exception as e:
-        print(f"❌ API エラー: {e}")
+        print(f"❌ エラー: {e}")
         print(f"⚠️ フォールバックテンプレートを使用...")
         return generate_script_fallback(account_name)
 

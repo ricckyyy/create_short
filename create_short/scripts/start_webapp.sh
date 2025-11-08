@@ -11,8 +11,10 @@ if ! tmux has-session -t voicevox 2>/dev/null; then
     sleep 3
 fi
 
-# 仮想環境の有効化
-source ~/myenv/bin/activate
+#!/bin/bash
+
+# 仮想環境のアクティベート
+source /home/rt/create_short/venv/bin/activate
 
 # Flaskアプリの起動
 echo "🚀 Webアプリを起動中..."

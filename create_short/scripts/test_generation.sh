@@ -14,7 +14,7 @@ echo "📍 実行ディレクトリ: $(pwd)"
 echo ""
 
 # 仮想環境有効化
-source ~/myenv/bin/activate
+source /home/rt/create_short/venv/bin/activate
 
 # VOICEVOX確認
 echo "🔍 VOICEVOX Engine確認中..."
