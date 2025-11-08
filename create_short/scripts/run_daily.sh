@@ -15,10 +15,25 @@ mkdir -p data/logs/cron
 # Homebrew PATHを追加（macOS用）
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
+# VOICEVOX Engineが起動していなければ起動
+if ! tmux has-session -t voicevox 2>/dev/null; then
+    echo "🎙️ VOICEVOX Engineを起動中..."
+    tmux new-session -d -s voicevox 'cd ~/voicevox_engine-linux-cpu-x64-0.24.1/linux-cpu-x64 && ./run'
+    sleep 5  # 起動待機
+fi
+
+# Ollama Engineが起動していなければ起動
+if ! pgrep -x "ollama" > /dev/null; then
+    echo "🦙 Ollama Engineを起動中..."
+    ollama serve > /dev/null 2>&1 &
+    sleep 3  # 起動待機
+fi
+
 # Python実行（Homebrewのpython3を使用）
 /opt/homebrew/bin/python3 daily_generation.py
 
 # 実行結果を記録
+<<<<<<< HEAD
 if [ $? -eq 0 ]; then
     echo "✅ 日次動画生成完了: $(date)" >> data/logs/cron/execution.log
 else
@@ -28,3 +43,6 @@ fi
 echo "================================"
 echo "完了: $(date)"
 echo "================================"
+=======
+echo "日次動画生成完了: $(date)" >> data/logs/cron/execution.log
+>>>>>>> d14b974 (fix: run_daily.shの修正とOllama自動起動追加)
