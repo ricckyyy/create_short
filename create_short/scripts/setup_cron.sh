@@ -17,7 +17,7 @@ echo ""
 echo "以下の設定を追加します:"
 echo ""
 echo "【毎日午前6時に自動生成】"
-echo "0 6 * * * $PROJECT_ROOT/scripts/run_daily.sh >> $PROJECT_ROOT/data/logs/cron/cron_output.log 2>&1"
+echo "0 12 * * * $PROJECT_ROOT/scripts/run_daily.sh >> $PROJECT_ROOT/data/logs/cron/cron_output.log 2>&1"
 echo ""
 
 read -p "この設定を追加しますか？ (y/n): " answer

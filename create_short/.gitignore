@@ -14,6 +14,11 @@ myenv/
 *.wav
 *.mp3
 
+# 生成された台本・メタデータ
+data/scripts/history/script_*.txt
+data/scripts/history/metadata_*.json
+data/scripts/history/scripts_*.json
+
 # YouTube API 認証情報
 client_secrets.json
 token.pickle
