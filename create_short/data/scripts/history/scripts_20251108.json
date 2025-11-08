@@ -1,0 +1,53 @@
+[
+  {
+    "name": "心理テストラボ",
+    "script": "直感で選んでください\n今すぐ行きたい場所は?\n①海 ②山 ③街 ④家\nこれで性格が丸わかり\n①海を選んだあなた\n実は自由を求めてますね?\n②山の人は冒険家タイプ\n③④を選んだ人は?\nコメント欄で語り合おう\n毎日更新中、フォロー必須",
+    "keywords": [
+      "mind",
+      "brain",
+      "character analysis",
+      "quiz",
+      "human nature",
+      "psychology test",
+      "decision making",
+      "self discovery",
+      "thinking",
+      "personality"
+    ],
+    "slug": "shinrigaku"
+  },
+  {
+    "name": "闇夜の語り部",
+    "script": "昨夜、変な夢を見ました\n暗い廊下を歩いていると\n奥から女性の声が聞こえる\n「こっち...来ないで」\nでも足が勝手に進んでしまう\nドアを開けた瞬間\n鏡に映る自分が笑ってた\nそして今朝、鏡に手形が\nまだそこにあります\nこれ、夢だったのかな?",
+    "keywords": [
+      "supernatural",
+      "paranormal",
+      "nightmare",
+      "urban legend",
+      "mysterious",
+      "suspense",
+      "true horror",
+      "horror story",
+      "dark night",
+      "scary"
+    ],
+    "slug": "kowai"
+  },
+  {
+    "name": "映画紹介",
+    "script": "このラスト、鳥肌止まらない\n『記憶の檻』観た人いる?\n主人公は目覚めると記憶喪失\n毎日メモだけが唯一の手がかり\nでも誰かがメモを書き換えてる\n信じられるのは自分だけ\nそして衝撃のラスト15秒\n全員が涙した名シーン\n映画館で観て欲しい\nフォローで毎週おすすめ紹介",
+    "keywords": [
+      "spoiler free",
+      "suspense film",
+      "thriller",
+      "masterpiece",
+      "mystery movie",
+      "movie review",
+      "plot twist",
+      "hidden gem",
+      "cinema",
+      "must watch"
+    ],
+    "slug": "movie"
+  }
+]

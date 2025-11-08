@@ -94,10 +94,28 @@ def generate_daily_videos():
                 )
                 log_message(f"✅ 動画生成完了: {video_path}")
                 
+                # メタデータ生成（タイトル・説明文・ハッシュタグ）
+                log_message(f"� メタデータ生成中...")
+                metadata = generate_metadata(acc["name"], acc["script"])
+                
+                # メタデータをファイルに保存
+                metadata_file = get_script_path(acc["name"], date_str).parent / f"metadata_{acc['name']}_{date_str}.json"
+                with open(metadata_file, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "title": metadata["title"],
+                        "description": metadata["description"],
+                        "tags": metadata["tags"],
+                        "video_path": str(video_path),
+                        "account": acc["name"],
+                        "date": date_str
+                    }, f, ensure_ascii=False, indent=2)
+                log_message(f"✅ メタデータ保存: {metadata_file}")
+                log_message(f"   タイトル: {metadata['title']}")
+                log_message(f"   タグ数: {len(metadata['tags'])}")
+                
                 # YouTube アップロード
                 log_message(f"📤 YouTube アップロード中...")
                 try:
-                    metadata = generate_metadata(acc["name"], acc["script"])
                     upload_result = upload_video(
                         video_path=str(video_path),
                         title=metadata["title"],
