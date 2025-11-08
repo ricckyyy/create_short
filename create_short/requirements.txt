@@ -1,0 +1,10 @@
+flask
+flask-cors
+requests
+moviepy
+pillow
+
+# AI台本生成用（オプション）
+# 使用する場合はコメントを外してインストール
+# openai
+# anthropic

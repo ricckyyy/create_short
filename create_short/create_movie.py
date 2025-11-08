@@ -2,7 +2,11 @@
 # pip install moviepy pydub requests
 
 import os
-os.makedirs("output", exist_ok=True)
+from pathlib import Path
+from config import init_directories, ASSETS_VIDEO_DIR
+
+# ディレクトリ初期化
+init_directories()
 
 import requests
 from moviepy import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ColorClip
@@ -120,11 +124,12 @@ def create_video_with_keywords(script_lines, keywords, api_key, voice_file, outp
     dur_per_line = total_duration / len(script_lines)
     clips = []
 
-    # 動画クリップを取得
+    # 動画クリップを取得（新しいディレクトリに保存）
     video_files = []
     for i, kw in enumerate(keywords):
         urls = search_pexels_video(kw, api_key)
-        vid_file = download_video(urls[0] if urls else "", f"clip{i}.mp4")
+        clip_filename = ASSETS_VIDEO_DIR / f"clip_{i}_{os.getpid()}.mp4"
+        vid_file = download_video(urls[0] if urls else "", str(clip_filename))
         video_files.append(vid_file)
 
     # 各台本行に動画を割り当て
@@ -167,23 +172,20 @@ PEXELS_API_KEY = "QqcFiUzxOsDiOYP3sUQyty0hKhTGdzgBQdPQ8nymB7Y1KaXkYocVkctS"
 accounts = [
     {
         "name": "心理テストラボ",
-        "script": """
-【驚愕】1分で分かるあなたの恋愛観診断！\nあなたは今、恋愛で悩んでいませんか？\n3つの質問であなたの運命がわかります！\n1つ目：好きな人からLINEが来たら...\n①すぐ返信 ②じっくり考える ③気分で対応\nえっ！まさかあなた...！？\nそして2問目の質問で運命が変わる...\n実は2番を選んだ人には、意外な結果が！\nフォロー＆いいねで次回の質問へ\n結果を知りたい人は@shinri_labo まで！\n""",
-        "keywords": ["love", "psychology", "test", "personality", "diagnosis", "relationship", "fortune", "line", "romance", "future"],
+        "script": """あなたの本当の性格、当てられます\n1つだけ質問させてください\n朝起きて最初に見るものは何ですか？\n①スマホ ②時計 ③窓の外\n実は、これであなたの深層心理が丸わかり\n①を選んだあなた...まさか！\n人間関係で悩んでませんか？\n②の人は意外な才能の持ち主\n③を選んだ人、コメント欄集合！\nフォローで毎日診断配信中""",
+        "keywords": ["psychology test", "personality", "morning routine", "smartphone", "window", "quiz", "human psychology", "relationship", "talent", "self discovery"],
         "output": "output/shinrigaku.mp4"
     },
     {
         "name": "闇夜の語り部",
-        "script": """
-⚠️この動画は深夜の視聴を推奨します\n都内某所で起きた本当の怖い話...\nコンビニの夜勤中、不思議な出来事が\n誰もいない店内なのに、レジの呼び出し音が\nカメラを確認すると、レジ前に見知らぬ女性が\nでも、店内には誰もいないはず...\n監視カメラに映っていたものは？\n続きが気になる人はフォロー必須！\n毎週火曜の深夜に投稿中\nもっと怖い話は@yami_kataribe で！\n""",
-        "keywords": ["horror", "ghost", "convenience store", "night", "mystery", "scary", "urban legend", "security camera", "supernatural", "true story"],
+        "script": """これは5年前、私が体験した話です\n深夜2時、帰宅途中の住宅街で\n向こうから歩いてくる女性がいた\nすれ違う瞬間、彼女が囁いた\n「後ろ...見ないで」\n振り返りそうになったその時\n背後から冷たい手が肩に...\n結局、私は振り返ってしまった\nそこにいたものは\nコメントで続き聞きたい人？""",
+        "keywords": ["dark night", "horror story", "mysterious woman", "street", "whisper", "scary encounter", "urban legend", "supernatural", "suspense", "true horror"],
         "output": "output/kowaihanashi.mp4"
     },
     {
         "name": "映画紹介",
-        "script": """
-全世界で話題沸騰！涙腺崩壊の傑作が解禁\nNetflix新作『あの日の約束』\n幼なじみの親友を事故で亡くした主人公\nある日、10年前からの手紙が届く...\nこの映画、最後の5分で人生観が変わります\n世界中で"心が浄化された"と話題に\nここからが本当の見どころ...\n予想を超える結末の考察を待ってます！\nフォローで次回作もお見逃しなく\nレビューは@movie_review で配信中！\n""",
-        "keywords": ["movie", "netflix", "drama", "friendship", "letter", "emotion", "review", "recommendation", "twist", "masterpiece"],
+        "script": """この映画、ラスト5分で全てひっくり返る\n今話題の『時間泥棒』知ってる？\n主人公は記憶を失った探偵\n唯一の手がかりは謎のメモだけ\n事件を追うたび、時間が巻き戻る\n実は犯人、最初から画面に映ってた\n気づいた人いる？\n2回目観ると鳥肌止まらない\nネタバレ厳禁で拡散希望\nフォローで毎週新作紹介""",
+        "keywords": ["mystery movie", "plot twist", "detective", "time", "memory loss", "thriller", "suspense film", "cinema", "movie review", "spoiler free"],
         "output": "output/movie.mp4"
     }
 ]
@@ -192,26 +194,27 @@ accounts = [
 # 使い方：
 # accounts = new_accounts  # 新しい収益化向け台本に差し替え
 
-# --- 生成したいアカウント名を指定 ---
-target_name = None  # 例: "映画紹介" など。Noneなら全て生成
+if __name__ == "__main__":
+    # --- 生成したいアカウント名を指定 ---
+    target_name = None  # 例: "映画紹介" など。Noneなら全て生成
 
-for acc in accounts:
-    if target_name is not None and acc["name"] != target_name:
-        continue
-    print(f"\n=== {acc['name']} 動画生成 ===")
-    script_lines = [line.strip() for line in acc["script"].split("\n") if line.strip()]
-    # アカウントごとに話者・ピッチを設定
-    if acc["name"] == "闇夜の語り部":
-        speaker_index = 7
-        pitch = -0.5
-    else:
-        speaker_index = 1
-        pitch = 0
-    # 音声ファイルはカレントディレクトリに出力
-    voice_file_path = acc['output'].replace('output/', '').replace('.mp4', '.wav')
-    voice_file = generate_voice(acc["script"], speaker_index=speaker_index, pitch=pitch, speed=1.0, filename=voice_file_path)
-    # 動画ファイルのみoutputフォルダに出力
-    create_video_with_keywords(script_lines, acc["keywords"], PEXELS_API_KEY, voice_file, output_file=acc["output"])
-    print(f"✅ {acc['name']} 動画生成完了: {acc['output']}")
+    for acc in accounts:
+        if target_name is not None and acc["name"] != target_name:
+            continue
+        print(f"\n=== {acc['name']} 動画生成 ===")
+        script_lines = [line.strip() for line in acc["script"].split("\n") if line.strip()]
+        # アカウントごとに話者・ピッチを設定
+        if acc["name"] == "闇夜の語り部":
+            speaker_index = 7
+            pitch = -0.5
+        else:
+            speaker_index = 1
+            pitch = 0
+        # 音声ファイルはカレントディレクトリに出力
+        voice_file_path = acc['output'].replace('output/', '').replace('.mp4', '.wav')
+        voice_file = generate_voice(acc["script"], speaker_index=speaker_index, pitch=pitch, speed=1.0, filename=voice_file_path)
+        # 動画ファイルのみoutputフォルダに出力
+        create_video_with_keywords(script_lines, acc["keywords"], PEXELS_API_KEY, voice_file, output_file=acc["output"])
+        print(f"✅ {acc['name']} 動画生成完了: {acc['output']}")
 
-print("✅ 動画生成完了")
+    print("✅ 動画生成完了")

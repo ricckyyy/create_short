@@ -1,0 +1,63 @@
+📁 プロジェクト構造（整理後）
+================================
+
+create_short/
+│
+├── 📄 Pythonコアファイル (5個)
+│   ├── config.py              # 設定・パス管理
+│   ├── create_movie.py        # 動画生成エンジン
+│   ├── generate_script.py    # AI台本生成
+│   ├── daily_generation.py   # 日次自動生成
+│   └── app.py                 # Webアプリ
+│
+├── 📚 docs/ (ドキュメント 5個)
+│   ├── QUICKSTART.md
+│   ├── AUTOMATION_GUIDE.md
+│   ├── FOLDER_STRUCTURE.md
+│   ├── PROJECT_FILES.md
+│   └── daihon.md
+│
+├── 🚀 scripts/ (実行スクリプト 5個)
+│   ├── start_webapp.sh       # Webアプリ起動
+│   ├── run_daily.sh          # 日次実行（cron用）
+│   ├── test_generation.sh    # テスト実行
+│   ├── setup_cron.sh         # cron設定
+│   └── start_shell.sh        # 開発環境
+│
+├── 📂 data/ (生成データ)
+│   ├── videos/
+│   │   ├── draft/           # 生成動画（投稿前）
+│   │   └── published/       # 投稿済み
+│   ├── scripts/
+│   │   ├── history/         # 台本履歴
+│   │   └── archive/         # アーカイブ
+│   ├── logs/
+│   │   ├── generation/      # 生成ログ
+│   │   ├── upload/          # 投稿ログ
+│   │   └── cron/            # cronログ
+│   ├── audio/               # 一時音声
+│   ├── assets/
+│   │   └── video_clips/     # ダウンロード素材
+│   └── upload/
+│       ├── queue/           # 投稿待ち
+│       └── history/         # 投稿履歴
+│
+├── 🎨 templates/
+│   └── index.html           # Webアプリフロント
+│
+├── ⚙️ 設定ファイル
+│   ├── requirements.txt     # 依存パッケージ
+│   └── README.md            # メインREADME
+│
+└── .github/
+    └── copilot-instructions.md
+
+================================
+整理のポイント:
+✅ 同じ種類のファイルをディレクトリにまとめた
+✅ Pythonコア: プロジェクトルート
+✅ ドキュメント: docs/
+✅ 実行スクリプト: scripts/
+✅ データ: data/
+✅ 設定: ルート直下
+================================
