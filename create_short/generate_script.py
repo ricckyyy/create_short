@@ -1,6 +1,6 @@
 """
 AI を使った台本自動生成スクリプト
-OpenAI API / Anthropic Claude API / GitHub Copilot を使用
+OpenAI API または Anthropic Claude API を使用
 """
 
 import os
@@ -19,17 +19,12 @@ from config import (
 init_directories()
 
 # 使用するAI API を選択（環境変数から取得）
-# export GITHUB_TOKEN="your-github-token"  # GitHub Copilot
 # export OPENAI_API_KEY="your-key"         # OpenAI
 # export ANTHROPIC_API_KEY="your-key"      # Anthropic
-USE_GITHUB_COPILOT = os.getenv("GITHUB_TOKEN") is not None
 USE_OPENAI = os.getenv("OPENAI_API_KEY") is not None
 USE_ANTHROPIC = os.getenv("ANTHROPIC_API_KEY") is not None
 
-if USE_GITHUB_COPILOT:
-    import requests
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-elif USE_OPENAI:
+if USE_OPENAI:
     import openai
     openai.api_key = os.getenv("OPENAI_API_KEY")
 elif USE_ANTHROPIC:
@@ -134,39 +129,6 @@ ACCOUNT_PROMPTS = {
 }
 
 
-def generate_script_with_github_copilot(account_name):
-    """GitHub Copilot API で台本生成"""
-    config = ACCOUNT_PROMPTS[account_name]
-    
-    # GitHub Copilot は OpenAI 互換 API を使用
-    headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": "gpt-4",
-        "messages": [
-            {"role": "system", "content": config["system"]},
-            {"role": "user", "content": config["prompt"]}
-        ],
-        "temperature": 0.9,
-        "max_tokens": 500
-    }
-    
-    # GitHub Copilot の Chat Completions エンドポイント
-    response = requests.post(
-        "https://api.githubcopilot.com/chat/completions",
-        headers=headers,
-        json=payload
-    )
-    
-    response.raise_for_status()
-    result = response.json()
-    script = result["choices"][0]["message"]["content"].strip()
-    return script
-
-
 def generate_script_with_openai(account_name):
     """OpenAI API で台本生成"""
     config = ACCOUNT_PROMPTS[account_name]
@@ -225,10 +187,7 @@ def generate_script_fallback(account_name):
 def generate_script(account_name):
     """台本を生成（利用可能なAPIを自動選択）"""
     try:
-        if USE_GITHUB_COPILOT:
-            print(f"🤖 GitHub Copilot で {account_name} の台本を生成中...")
-            return generate_script_with_github_copilot(account_name)
-        elif USE_OPENAI:
+        if USE_OPENAI:
             print(f"🤖 OpenAI GPT-4 で {account_name} の台本を生成中...")
             return generate_script_with_openai(account_name)
         elif USE_ANTHROPIC:
