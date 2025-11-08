@@ -21,3 +21,4 @@ voicevox_engine-linux-cpu-x64-0.24.1/
 .local
 .wget-hsts
 .ollama/
+dev/movie-scheduler
