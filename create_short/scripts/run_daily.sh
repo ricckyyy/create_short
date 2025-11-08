@@ -15,7 +15,6 @@ fi
 #!/bin/bash
 
 # 仮想環境のアクティベート
-source /home/rt/create_short/venv/bin/activate
 
 # 日次生成スクリプト実行
 python3 daily_generation.py

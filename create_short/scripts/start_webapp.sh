@@ -13,8 +13,9 @@ fi
 
 #!/bin/bash
 
-# 仮想環境のアクティベート
-source /home/rt/create_short/venv/bin/activate
+#!/bin/bash
+
+# VOICEVOX Engine が起動しているか確認
 
 # Flaskアプリの起動
 echo "🚀 Webアプリを起動中..."
