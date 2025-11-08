@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+myenv/
+
+# 動画・音声ファイル
+*.mp4
+*.wav
+*.mp3
+
+# YouTube API 認証情報
+client_secrets.json
+token.pickle
+*.json.backup
+
+# AI API キー
+.env
+*.key
+
+# ログ
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 一時ファイル
+clip*.mp4
+temp_*.mp4

@@ -21,6 +21,7 @@ from config import (
     ACCOUNTS,
     cleanup_temp_files
 )
+from upload_youtube import upload_video, generate_metadata
 
 # ディレクトリ初期化
 init_directories()
@@ -92,6 +93,23 @@ def generate_daily_videos():
                     output_file=str(video_path)
                 )
                 log_message(f"✅ 動画生成完了: {video_path}")
+                
+                # YouTube アップロード
+                log_message(f"📤 YouTube アップロード中...")
+                try:
+                    metadata = generate_metadata(acc["name"], acc["script"])
+                    upload_result = upload_video(
+                        video_path=str(video_path),
+                        title=metadata["title"],
+                        description=metadata["description"],
+                        tags=metadata["tags"],
+                        privacy_status="public"  # 本番環境では public
+                    )
+                    log_message(f"✅ アップロード完了: {upload_result['url']}")
+                    log_message(f"   動画ID: {upload_result['video_id']}")
+                except Exception as upload_error:
+                    log_message(f"⚠️  アップロード失敗（動画は生成済み）: {str(upload_error)}")
+                    # アップロード失敗でも動画生成は成功とカウント
                 
                 success_count += 1
                 
