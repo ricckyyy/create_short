@@ -21,25 +21,15 @@ def format_for_youtube(metadata_file: Path):
     # 説明文とハッシュタグを統合（コピペしやすく）
     description_with_tags = f"{data['description']}\n\n{hashtags}"
     
-    # YouTube用フォーマット
+    # YouTube用フォーマット（説明文のみ）
     output = f"""
-{'='*70}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎬 {data['account']}
-{'='*70}
-
-📌 タイトル（コピーしてタイトル欄に貼り付け）
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{data['title']}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📝 説明文（コピーして説明欄に貼り付け）
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {description_with_tags}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📁 動画ファイル: {data.get('video_path', 'N/A')}
-
-{'='*70}
 """
     return output
 
@@ -57,30 +47,30 @@ def main():
         return
     
     print("\n" + "="*70)
-    print("📺 YouTube 手動アップロード用メタデータ")
+    print("📺 YouTube/TikTok 投稿用説明文")
     print("="*70)
-    print("\n💡 以下をコピーしてYouTube投稿画面に貼り付けてください\n")
+    print("\n💡 以下をコピーして投稿画面の説明欄に貼り付けてください\n")
     
     # アカウント別にグループ化
-    account_groups = {}
-    for metadata_file in metadata_files:
-        with open(metadata_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        account = data["account"]
-        if account not in account_groups:
-            account_groups[account] = []
-        account_groups[account].append(metadata_file)
+    from config import ACCOUNTS
     
-    # 各アカウントの最新メタデータを表示
-    for account, files in account_groups.items():
-        latest_file = sorted(files)[-1]  # 最新のファイル
-        print(format_for_youtube(latest_file))
+    # ACCOUNTS の順序で表示
+    for account_name in ACCOUNTS.keys():
+        # このアカウントのslugを取得
+        slug = ACCOUNTS[account_name]["slug"]
+        
+        # slugでメタデータファイルを検索
+        account_files = [f for f in metadata_files if slug in f.stem]
+        
+        if account_files:
+            latest_file = sorted(account_files)[-1]  # 最新のファイル
+            print(format_for_youtube(latest_file))
+        else:
+            print(f"\n⚠️ {account_name} のメタデータが見つかりません\n")
     
     print("\n📋 使い方:")
-    print("1. 📌タイトル の枠内をコピー → YouTube投稿画面のタイトル欄に貼り付け")
-    print("2. 📝説明文 の枠内をコピー → 説明欄に貼り付け（ハッシュタグ込み）")
-    print("3. 動画ファイルのパスから動画をアップロード")
-    print("\n💡 Tip: 枠線は含めずに、中身だけをコピーしてください")
+    print("1. 各アカウントの説明文をコピー")
+    print("2. YouTube/TikTokの投稿画面の説明欄に貼り付け")
     print()
 
 
