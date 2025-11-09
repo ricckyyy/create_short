@@ -1,6 +1,7 @@
 """
 AI を使った台本自動生成スクリプト
 OpenAI API / Anthropic Claude API / Ollama (ローカルLLM) を使用
+過去の成功データから学習して最適化
 """
 
 import os
@@ -14,6 +15,14 @@ from config import (
     SCRIPTS_HISTORY_DIR,
     init_directories
 )
+
+# 学習モジュールをインポート
+try:
+    from learning_prompt import generate_learning_prompt, get_adaptive_instructions
+    LEARNING_ENABLED = True
+except ImportError:
+    LEARNING_ENABLED = False
+    print("⚠️ 学習機能が無効です（learning_prompt.pyが見つかりません）")
 
 # ディレクトリ初期化
 init_directories()
@@ -151,8 +160,22 @@ ACCOUNT_PROMPTS = {
 
 
 def generate_script_with_ollama(account_name):
-    """Ollama (ローカルLLM) で台本生成"""
+    """Ollama (ローカルLLM) で台本生成 - 学習機能付き"""
     config = ACCOUNT_PROMPTS[account_name]
+    
+    # 学習プロンプトを生成（データがあれば）
+    base_prompt = f"{config['system']}\n\n{config['prompt']}"
+    
+    if LEARNING_ENABLED:
+        try:
+            # 過去の成功パターンを組み込む
+            enhanced_prompt = generate_learning_prompt(account_name, base_prompt)
+            print(f"🎓 学習データを活用してプロンプト生成")
+        except Exception as e:
+            print(f"⚠️ 学習プロンプト生成失敗、ベースプロンプトを使用: {e}")
+            enhanced_prompt = base_prompt
+    else:
+        enhanced_prompt = base_prompt
     
     # 明確な例を含めて品質向上
     example = """例:
@@ -166,13 +189,11 @@ def generate_script_with_ollama(account_name):
 ③を選んだ人、コメントで教えて
 フォローで毎日診断配信中"""
     
-    prompt = f"""{config['system']}
+    prompt = f"""{enhanced_prompt}
 
-{config['prompt']}
+{example if account_name == "心理テストラボ" else ""}
 
-{example}
-
-上記の例のように、必ず以下のルールを守ってください:
+上記のルールを守ってください:
 1. 10行ちょうどで書く
 2. 各行は短く、テンポよく
 3. 冒頭で引き込む

@@ -384,6 +384,29 @@
         .close:hover {
             color: #000;
         }
+        
+        .insight-card {
+            background: #f0f8ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .insight-card h4 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+        
+        .insight-card ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .insight-card li {
+            margin: 5px 0;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
@@ -454,6 +477,15 @@
             <!-- アナリティクス -->
             <div class="section">
                 <h2>📊 アナリティクス</h2>
+                
+                <!-- インサイト -->
+                <div style="margin-bottom: 30px;">
+                    <h3>💡 AI インサイト</h3>
+                    <div id="insightsSection" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                        <!-- インサイトカード -->
+                    </div>
+                </div>
+                
                 <div id="analyticsSection">
                     <div id="statsCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
                         <!-- 統計カード -->
@@ -649,6 +681,40 @@
         loadVideos();
         loadMetadata();
         loadAnalytics();
+        loadInsights();
+        
+        // インサイト読み込み
+        async function loadInsights() {
+            const accounts = ['心理テストラボ', '闇夜の語り部', '映画紹介'];
+            const insightsContainer = document.getElementById('insightsSection');
+            
+            try {
+                const insightsPromises = accounts.map(account => 
+                    fetch(`/api/analytics/insights/${encodeURIComponent(account)}`).then(r => r.json())
+                );
+                
+                const allInsights = await Promise.all(insightsPromises);
+                
+                insightsContainer.innerHTML = allInsights.map(data => `
+                    <div class="insight-card">
+                        <h4>🎬 ${data.account_name}</h4>
+                        ${data.insights && data.insights.length > 0 ? `
+                            <ul>
+                                ${data.insights.map(insight => `<li>${insight}</li>`).join('')}
+                            </ul>
+                        ` : '<p style="color: #999;">データ不足（動画を生成して再生数を記録してください）</p>'}
+                        ${data.summary && data.summary.sample_count > 0 ? `
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666;">
+                                サンプル: ${data.summary.sample_count}動画 / 平均: ${Math.round(data.summary.avg_views)}回再生
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('インサイト読み込みエラー:', error);
+                insightsContainer.innerHTML = '<p style="text-align:center;color:#666;">インサイトを読み込めませんでした</p>';
+            }
+        }
         
         // アナリティクス読み込み
         async function loadAnalytics() {

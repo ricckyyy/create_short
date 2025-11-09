@@ -25,6 +25,10 @@ from db_manager import (
     get_video_by_path,
     get_performance_stats
 )
+from analytics import (
+    analyze_successful_scripts,
+    generate_insights
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -244,6 +248,22 @@ def update_analytics():
     )
     
     return jsonify({"success": True, "video_id": video['id']})
+
+@app.route('/api/analytics/insights/<account_name>')
+def get_insights(account_name):
+    """特定アカウントのインサイトを取得"""
+    insights = generate_insights(account_name)
+    analysis = analyze_successful_scripts(account_name, top_n=10)
+    
+    return jsonify({
+        "account_name": account_name,
+        "insights": insights,
+        "summary": {
+            "sample_count": analysis.get("sample_count", 0),
+            "avg_views": analysis.get("avg_views", 0),
+            "top_keywords": analysis.get("keyword_frequency", {}).get("top_keywords", [])[:5]
+        }
+    })
 
 if __name__ == '__main__':
     init_directories()
