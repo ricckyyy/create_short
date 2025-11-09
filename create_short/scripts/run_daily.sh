@@ -29,11 +29,16 @@ if ! pgrep -x "ollama" > /dev/null; then
     sleep 3  # 起動待機
 fi
 
-# Python実行（Homebrewのpython3を使用）
-/opt/homebrew/bin/python3 daily_generation.py
+# Python実行（環境に応じて自動検出）
+if [ -f /opt/homebrew/bin/python3 ]; then
+    # macOS (Homebrew)
+    /opt/homebrew/bin/python3 daily_generation.py
+else
+    # Linux/WSL
+    python3 daily_generation.py
+fi
 
 # 実行結果を記録
-<<<<<<< HEAD
 if [ $? -eq 0 ]; then
     echo "✅ 日次動画生成完了: $(date)" >> data/logs/cron/execution.log
 else
@@ -43,6 +48,4 @@ fi
 echo "================================"
 echo "完了: $(date)"
 echo "================================"
-=======
-echo "日次動画生成完了: $(date)" >> data/logs/cron/execution.log
->>>>>>> d14b974 (fix: run_daily.shの修正とOllama自動起動追加)
+

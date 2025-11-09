@@ -17,6 +17,7 @@ from config import (
     get_audio_path,
     get_script_path,
     LOGS_GENERATION_DIR,
+    SCRIPTS_HISTORY_DIR,
     PEXELS_API_KEY,
     ACCOUNTS,
     cleanup_temp_files
@@ -98,8 +99,8 @@ def generate_daily_videos():
                 log_message(f"� メタデータ生成中...")
                 metadata = generate_metadata(acc["name"], acc["script"])
                 
-                # メタデータをファイルに保存
-                metadata_file = get_script_path(acc["name"], date_str).parent / f"metadata_{acc['name']}_{date_str}.json"
+                # メタデータをファイルに保存（タイムスタンプ不要なのでhistoryディレクトリ直接指定）
+                metadata_file = SCRIPTS_HISTORY_DIR / f"metadata_{acc['slug']}_{date_str}.json"
                 with open(metadata_file, "w", encoding="utf-8") as f:
                     json.dump({
                         "title": metadata["title"],
