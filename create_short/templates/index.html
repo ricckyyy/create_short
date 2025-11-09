@@ -251,6 +251,51 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        
+        .metadata-card {
+            background: #f0f8ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .metadata-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .metadata-content {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.95em;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .copy-btn {
+            background: #11998e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .copy-btn:hover {
+            background: #0d7a6f;
+        }
+        
+        .copy-btn.copied {
+            background: #38ef7d;
+        }
     </style>
 </head>
 <body>
@@ -306,6 +351,14 @@
             <div class="section">
                 <h2>📹 生成済み動画</h2>
                 <div class="video-list" id="videoList">
+                    <!-- JavaScriptで動的に生成 -->
+                </div>
+            </div>
+            
+            <!-- 投稿用説明文 -->
+            <div class="section">
+                <h2>📝 投稿用説明文</h2>
+                <div id="metadataSection">
                     <!-- JavaScriptで動的に生成 -->
                 </div>
             </div>
@@ -377,6 +430,56 @@
             window.location.href = `/api/download/${filename}`;
         }
         
+        // メタデータ読み込み
+        async function loadMetadata() {
+            try {
+                const response = await fetch('/api/metadata');
+                const metadataList = await response.json();
+                const container = document.getElementById('metadataSection');
+                
+                if (metadataList.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#666;">メタデータがまだ生成されていません</p>';
+                    return;
+                }
+                
+                container.innerHTML = metadataList.map(meta => {
+                    const description = meta.description || '';
+                    const tags = meta.tags ? meta.tags.join(' ') : '';
+                    const fullText = `${description}\n\n${tags}`;
+                    
+                    return `
+                        <div class="metadata-card">
+                            <h3>🎬 ${meta.account}</h3>
+                            <div class="metadata-content" id="metadata-${meta.slug}">${fullText}</div>
+                            <button class="copy-btn" onclick="copyMetadata('${meta.slug}')">
+                                📋 コピー
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('メタデータ読み込みエラー:', error);
+            }
+        }
+        
+        // メタデータコピー
+        function copyMetadata(slug) {
+            const content = document.getElementById(`metadata-${slug}`).textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ コピーしました！';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('コピーエラー:', err);
+                alert('コピーに失敗しました');
+            });
+        }
+        
         // フォーム送信
         document.getElementById('videoForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -420,6 +523,7 @@
                         setTimeout(() => {
                             progressSection.classList.remove('active');
                             loadVideos();
+                            loadMetadata();
                         }, 2000);
                     } else if (progress.status === 'error') {
                         clearInterval(progressInterval);
@@ -441,6 +545,7 @@
         // 初期化
         loadPresets();
         loadVideos();
+        loadMetadata();
     </script>
 </body>
 </html>

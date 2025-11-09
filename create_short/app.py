@@ -4,6 +4,7 @@ import os
 import json
 from threading import Thread
 from datetime import datetime
+from pathlib import Path
 from create_movie import generate_voice, create_video_with_keywords
 from config import (
     init_directories,
@@ -11,6 +12,7 @@ from config import (
     get_audio_path,
     VIDEOS_DRAFT_DIR,
     VIDEOS_PUBLISHED_DIR,
+    SCRIPTS_HISTORY_DIR,
     PEXELS_API_KEY,
     ACCOUNTS,
     cleanup_temp_files
@@ -163,6 +165,38 @@ def list_videos():
     videos.sort(key=lambda x: x["created"], reverse=True)
     
     return jsonify(videos)
+
+@app.route('/api/metadata')
+def get_metadata():
+    """最新のメタデータ取得"""
+    metadata_list = []
+    
+    # 各アカウントの最新メタデータを取得
+    for account_name, account_info in ACCOUNTS.items():
+        slug = account_info["slug"]
+        
+        # このアカウントのメタデータファイルを検索
+        metadata_files = sorted(
+            SCRIPTS_HISTORY_DIR.glob(f"metadata_{slug}_*.json"),
+            key=lambda x: x.stat().st_mtime,
+            reverse=True
+        )
+        
+        if metadata_files:
+            # 最新のメタデータを読み込み
+            with open(metadata_files[0], "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+                metadata_list.append({
+                    "account": account_name,
+                    "slug": slug,
+                    "title": metadata.get("title", ""),
+                    "description": metadata.get("description", ""),
+                    "tags": metadata.get("tags", []),
+                    "date": metadata.get("date", ""),
+                    "file": metadata_files[0].name
+                })
+    
+    return jsonify(metadata_list)
 
 if __name__ == '__main__':
     init_directories()

@@ -18,6 +18,7 @@ from config import (
     get_script_path,
     LOGS_GENERATION_DIR,
     SCRIPTS_HISTORY_DIR,
+    UPLOAD_DIR,
     PEXELS_API_KEY,
     ACCOUNTS,
     cleanup_temp_files
@@ -37,6 +38,63 @@ def log_message(message):
     log_file = LOGS_GENERATION_DIR / f"generation_{datetime.now().strftime('%Y%m%d')}.log"
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_line + "\n")
+
+
+def save_latest_descriptions():
+    """最新のメタデータを読みやすい形式でファイルに保存"""
+    output_file = UPLOAD_DIR / "latest_descriptions.txt"
+    
+    content = []
+    content.append("=" * 70)
+    content.append("📝 YouTube/TikTok 投稿用説明文")
+    content.append("=" * 70)
+    content.append("")
+    content.append("💡 以下をコピーして投稿画面の説明欄に貼り付けてください")
+    content.append("")
+    content.append("")
+    
+    # 各アカウントのメタデータを取得
+    for account_name, account_info in ACCOUNTS.items():
+        slug = account_info["slug"]
+        
+        # このアカウントの最新メタデータを検索
+        metadata_files = sorted(
+            SCRIPTS_HISTORY_DIR.glob(f"metadata_{slug}_*.json"),
+            key=lambda x: x.stat().st_mtime,
+            reverse=True
+        )
+        
+        if metadata_files:
+            with open(metadata_files[0], "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+            
+            content.append("━" * 70)
+            content.append(f"🎬 {account_name}")
+            content.append("━" * 70)
+            content.append("")
+            content.append(metadata.get("description", ""))
+            content.append("")
+            
+            tags = metadata.get("tags", [])
+            if tags:
+                content.append(" ".join(tags))
+            
+            content.append("")
+            content.append("━" * 70)
+            content.append("")
+            content.append("")
+    
+    content.append("📋 使い方:")
+    content.append("1. 各アカウントの説明文をコピー")
+    content.append("2. YouTube/TikTokの投稿画面の説明欄に貼り付け")
+    content.append("")
+    content.append(f"📅 生成日時: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}")
+    
+    # ファイルに保存
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(content))
+    
+    return output_file
 
 
 def generate_daily_videos():
@@ -150,6 +208,16 @@ def generate_daily_videos():
         log_message(f"❌ 失敗: {error_count} 件")
         log_message(f"📅 実行日時: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}")
         log_message("="*60)
+        
+        # メタデータ（投稿用説明文）を表示
+        if success_count > 0:
+            log_message("\n" + "="*60)
+            log_message("📝 投稿用説明文を保存中...")
+            log_message("="*60)
+            descriptions_file = save_latest_descriptions()
+            log_message(f"✅ 保存完了: {descriptions_file}")
+            log_message(f"📄 確認: cat {descriptions_file}")
+            log_message("="*60)
         
         # 成功時のステータスコード
         return 0 if error_count == 0 else 1
