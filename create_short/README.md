@@ -229,9 +229,26 @@ crontab -l
 
 ## 📚 詳細ドキュメント
 
-- **自動化設定**: `docs/AUTOMATION_GUIDE.md` - cronによる自動実行の詳細
-- **台本作成**: `docs/daihon.md` - 効果的な台本作成のコツ
-- **フォルダ構造**: `docs/FOLDER_STRUCTURE.md` - ディレクトリ構造の説明
+### 📖 基本ガイド
+- **[クイックスタート](docs/QUICKSTART.md)** - 最速で動画生成を始める手順
+- **[台本作成ガイド](docs/daihon.md)** - エンゲージメントを高める台本作成のコツ
+- **[フォルダ構造](docs/FOLDER_STRUCTURE.md)** - プロジェクトのディレクトリ構成説明
+
+### 🤖 自動化
+- **[自動化ガイド](docs/AUTOMATION_GUIDE.md)** - cronによる毎日自動生成の設定方法
+- **[台本生成](docs/SCRIPT_GENERATION.md)** - AI台本生成機能の使い方（Ollama/OpenAI/Claude）
+- **[Windows自動化](docs/WINDOWS_TASK_SCHEDULER.md)** - Windowsタスクスケジューラでの自動実行
+
+### 📊 アナリティクス（NEW!）
+- **[アナリティクス機能](docs/ANALYTICS_GUIDE.md)** - 再生数分析とAI学習による台本最適化
+
+### 📤 YouTube連携
+- **[YouTube API設定](docs/YOUTUBE_API_SETUP.md)** - YouTube Data API v3のセットアップ手順
+- **[YouTube自動投稿](docs/YOUTUBE_UPLOAD_GUIDE.md)** - 動画の自動アップロード設定
+
+### 🔧 開発者向け
+- **[Git運用ルール](docs/GIT_WORKFLOW.md)** - GitHub Flowに基づく開発フロー
+- **[プロジェクトファイル](docs/PROJECT_FILES.md)** - 各ファイルの役割と責務
 
 ## 🎯 運用フロー
 
