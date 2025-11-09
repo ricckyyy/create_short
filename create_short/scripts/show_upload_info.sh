@@ -14,7 +14,7 @@ echo "🎬 YouTube手動アップロード用メタデータ表示"
 echo ""
 
 # メタデータ表示
-python show_metadata.py
+python3 show_metadata.py
 
 echo ""
 echo "📂 最新の動画ファイル:"
