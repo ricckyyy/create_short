@@ -13,9 +13,17 @@ from config import (
     VIDEOS_DRAFT_DIR,
     VIDEOS_PUBLISHED_DIR,
     SCRIPTS_HISTORY_DIR,
+    UPLOAD_DIR,
     PEXELS_API_KEY,
     ACCOUNTS,
     cleanup_temp_files
+)
+from db_manager import (
+    init_database,
+    get_all_videos,
+    update_video_metrics,
+    get_video_by_path,
+    get_performance_stats
 )
 
 app = Flask(__name__)
@@ -23,6 +31,7 @@ CORS(app)
 
 # ディレクトリ初期化
 init_directories()
+init_database()
 
 # 進捗状況を保存
 progress_status = {
@@ -197,6 +206,44 @@ def get_metadata():
                 })
     
     return jsonify(metadata_list)
+
+@app.route('/api/analytics/videos')
+def get_analytics_videos():
+    """データベースから全動画情報を取得"""
+    videos = get_all_videos()
+    return jsonify(videos)
+
+@app.route('/api/analytics/stats')
+def get_analytics_stats():
+    """パフォーマンス統計を取得"""
+    stats = get_performance_stats()
+    return jsonify(stats)
+
+@app.route('/api/analytics/update', methods=['POST'])
+def update_analytics():
+    """再生数などのメトリクスを更新"""
+    data = request.json
+    video_path = data.get('video_path')
+    views = data.get('views')
+    likes = data.get('likes')
+    comments = data.get('comments')
+    retention_rate = data.get('retention_rate')
+    
+    # 動画IDを取得
+    video = get_video_by_path(video_path)
+    if not video:
+        return jsonify({"error": "Video not found"}), 404
+    
+    # メトリクス更新
+    update_video_metrics(
+        video_id=video['id'],
+        views=views,
+        likes=likes,
+        comments=comments,
+        retention_rate=retention_rate
+    )
+    
+    return jsonify({"success": True, "video_id": video['id']})
 
 if __name__ == '__main__':
     init_directories()

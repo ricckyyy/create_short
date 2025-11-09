@@ -296,6 +296,94 @@
         .copy-btn.copied {
             background: #38ef7d;
         }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .videos-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .videos-table th,
+        .videos-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .videos-table th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        .videos-table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .edit-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .edit-btn:hover {
+            background: #5568d3;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -360,6 +448,20 @@
                 <h2>📝 投稿用説明文</h2>
                 <div id="metadataSection">
                     <!-- JavaScriptで動的に生成 -->
+                </div>
+            </div>
+            
+            <!-- アナリティクス -->
+            <div class="section">
+                <h2>📊 アナリティクス</h2>
+                <div id="analyticsSection">
+                    <div id="statsCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <!-- 統計カード -->
+                    </div>
+                    <h3 style="margin-top: 30px;">📹 動画一覧</h3>
+                    <div id="videosTable">
+                        <!-- 動画一覧テーブル -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -546,6 +648,116 @@
         loadPresets();
         loadVideos();
         loadMetadata();
+        loadAnalytics();
+        
+        // アナリティクス読み込み
+        async function loadAnalytics() {
+            try {
+                // 統計情報取得
+                const statsResponse = await fetch('/api/analytics/stats');
+                const stats = await statsResponse.json();
+                const statsContainer = document.getElementById('statsCards');
+                
+                if (stats.length > 0) {
+                    statsContainer.innerHTML = stats.map(stat => `
+                        <div class="stat-card">
+                            <h3>${stat.account_name}</h3>
+                            <div class="value">${stat.total_videos || 0}</div>
+                            <div>動画数</div>
+                            <div style="margin-top: 10px; font-size: 0.9em;">
+                                平均: ${Math.round(stat.avg_views || 0)} views<br>
+                                最高: ${Math.round(stat.max_views || 0)} views
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    statsContainer.innerHTML = '<p style="text-align:center;color:#666;">データがまだありません</p>';
+                }
+                
+                // 動画一覧取得
+                const videosResponse = await fetch('/api/analytics/videos');
+                const videos = await videosResponse.json();
+                const videosContainer = document.getElementById('videosTable');
+                
+                if (videos.length > 0) {
+                    videosContainer.innerHTML = `
+                        <table class="videos-table">
+                            <thead>
+                                <tr>
+                                    <th>タイトル</th>
+                                    <th>アカウント</th>
+                                    <th>再生数</th>
+                                    <th>いいね</th>
+                                    <th>コメント</th>
+                                    <th>生成日</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${videos.map(video => `
+                                    <tr>
+                                        <td>${video.title || '無題'}</td>
+                                        <td>${video.account_name}</td>
+                                        <td>${video.views || 0}</td>
+                                        <td>${video.likes || 0}</td>
+                                        <td>${video.comments || 0}</td>
+                                        <td>${new Date(video.created_at).toLocaleDateString('ja-JP')}</td>
+                                        <td>
+                                            <button class="edit-btn" onclick="editMetrics('${video.video_path}', ${video.views || 0}, ${video.likes || 0}, ${video.comments || 0})">
+                                                編集
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    videosContainer.innerHTML = '<p style="text-align:center;color:#666;">動画がまだ生成されていません</p>';
+                }
+            } catch (error) {
+                console.error('アナリティクス読み込みエラー:', error);
+            }
+        }
+        
+        // メトリクス編集
+        function editMetrics(videoPath, currentViews, currentLikes, currentComments) {
+            const views = prompt('再生数を入力:', currentViews);
+            if (views === null) return;
+            
+            const likes = prompt('いいね数を入力:', currentLikes);
+            if (likes === null) return;
+            
+            const comments = prompt('コメント数を入力:', currentComments);
+            if (comments === null) return;
+            
+            // データ更新
+            fetch('/api/analytics/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    video_path: videoPath,
+                    views: parseInt(views),
+                    likes: parseInt(likes),
+                    comments: parseInt(comments)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ 更新しました！');
+                    loadAnalytics();
+                } else {
+                    alert('❌ エラーが発生しました');
+                }
+            })
+            .catch(error => {
+                console.error('更新エラー:', error);
+                alert('❌ エラーが発生しました');
+            });
+        }
     </script>
 </body>
 </html>

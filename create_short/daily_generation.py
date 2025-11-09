@@ -24,9 +24,11 @@ from config import (
     cleanup_temp_files
 )
 from upload_youtube import upload_video, generate_metadata
+from db_manager import init_database, add_video
 
 # ディレクトリ初期化
 init_directories()
+init_database()
 
 def log_message(message):
     """ログ出力とファイル保存"""
@@ -171,6 +173,18 @@ def generate_daily_videos():
                 log_message(f"✅ メタデータ保存: {metadata_file}")
                 log_message(f"   タイトル: {metadata['title']}")
                 log_message(f"   タグ数: {len(metadata['tags'])}")
+                
+                # データベースに動画情報を記録
+                log_message(f"💾 データベースに記録中...")
+                video_id = add_video(
+                    account_name=acc["name"],
+                    video_path=video_path,
+                    script_content=acc["script"],
+                    keywords=acc["keywords"],
+                    title=metadata["title"],
+                    description=metadata["description"]
+                )
+                log_message(f"✅ DB記録完了 (ID: {video_id})")
                 
                 # YouTube アップロード
                 log_message(f"📤 YouTube アップロード中...")
