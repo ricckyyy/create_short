@@ -751,6 +751,7 @@
                             <thead>
                                 <tr>
                                     <th>タイトル</th>
+                                    <th>ファイル名</th>
                                     <th>アカウント</th>
                                     <th>再生数</th>
                                     <th>いいね</th>
@@ -760,9 +761,13 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${videos.map(video => `
+                                ${videos.map(video => {
+                                    // ファイルパスからファイル名のみ抽出
+                                    const fileName = video.video_path.split('/').pop();
+                                    return `
                                     <tr>
                                         <td>${video.title || '無題'}</td>
+                                        <td><small>${fileName}</small></td>
                                         <td>${video.account_name}</td>
                                         <td>${video.views || 0}</td>
                                         <td>${video.likes || 0}</td>
@@ -774,7 +779,7 @@
                                             </button>
                                         </td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     `;

@@ -22,8 +22,8 @@ python3 app.py
 ```
 
 **アクセスURL:**
-- **WSL内から**: `http://localhost:5000`
-- **Windows側から**: `http://172.28.33.38:5000` （WSLのIPアドレス）
+- **WSL内から**: `http://localhost:5001`
+- **Windows側から**: `http://172.28.33.38:5001` （WSLのIPアドレス）
 
 起動確認:
 ```bash
@@ -63,7 +63,7 @@ ps aux | grep "python.*app.py" | grep -v grep
 ### 2. 再生数の入力
 
 **方法A: Webアプリから（推奨）**
-1. ブラウザで `http://localhost:5000` を開く
+1. ブラウザで `http://localhost:5001` を開く
 2. 「📊 アナリティクス」セクションへスクロール
 3. 動画一覧の「編集」ボタンをクリック
 4. 再生数・いいね・コメント数を入力
@@ -154,13 +154,13 @@ print(f"レポート保存: {report_file}")
 
 ```bash
 # 統計情報
-curl http://localhost:5000/api/analytics/stats | jq
+curl http://localhost:5001/api/analytics/stats | jq
 
 # 全動画情報
-curl http://localhost:5000/api/analytics/videos | jq
+curl http://localhost:5001/api/analytics/videos | jq
 
 # インサイト
-curl http://localhost:5000/api/analytics/insights/心理テストラボ | jq
+curl http://localhost:5001/api/analytics/insights/心理テストラボ | jq
 ```
 
 ## 🤖 AI学習の仕組み
@@ -239,7 +239,7 @@ python3 app.py
 **確認方法**:
 ```bash
 # 起動確認（レスポンスがあればOK）
-curl http://localhost:5000/api/analytics/stats
+curl http://localhost:5001/api/analytics/stats
 ```
 
 ### インサイトが表示されない

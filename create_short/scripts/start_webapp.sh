@@ -13,6 +13,6 @@ fi
 
 # Flaskアプリの起動
 echo "🚀 Webアプリを起動中..."
-echo "📱 ブラウザで http://localhost:5000 を開いてください"
-echo "🌐 Windows側からは http://172.28.33.38:5000 でアクセスできます"
+echo "📱 ブラウザで http://localhost:5001 を開いてください"
+echo "🌐 Windows側からは http://172.28.33.38:5001 でアクセスできます"
 python3 app.py
