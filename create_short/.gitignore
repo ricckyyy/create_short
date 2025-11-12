@@ -19,6 +19,10 @@ data/scripts/history/script_*.txt
 data/scripts/history/metadata_*.json
 data/scripts/history/scripts_*.json
 
+# アップロード用説明文（自動生成ファイル）
+data/upload/descriptions_*.txt
+data/upload/latest_descriptions.txt
+
 # YouTube API 認証情報
 client_secrets.json
 token.pickle
