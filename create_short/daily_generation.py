@@ -82,7 +82,7 @@ def save_latest_descriptions():
             
             # タイトルを追加
             title = metadata.get("title", "無題")
-            content.append(f"📺 タイトル: {title}")
+            content.append(f"📺 {title}")
             content.append("")
             
             content.append(metadata.get("description", ""))
