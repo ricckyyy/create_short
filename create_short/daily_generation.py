@@ -43,8 +43,13 @@ def log_message(message):
 
 
 def save_latest_descriptions():
-    """最新のメタデータを読みやすい形式でファイルに保存"""
-    output_file = UPLOAD_DIR / "latest_descriptions.txt"
+    """最新のメタデータを読みやすい形式でファイルに保存（日付ごと）"""
+    # 日付ごとのファイル名
+    date_str = datetime.now().strftime('%Y%m%d')
+    output_file = UPLOAD_DIR / f"descriptions_{date_str}.txt"
+    
+    # 最新版へのシンボリックリンク用
+    latest_link = UPLOAD_DIR / "latest_descriptions.txt"
     
     content = []
     content.append("=" * 70)
@@ -74,6 +79,12 @@ def save_latest_descriptions():
             content.append(f"🎬 {account_name}")
             content.append("━" * 70)
             content.append("")
+            
+            # タイトルを追加
+            title = metadata.get("title", "無題")
+            content.append(f"📺 タイトル: {title}")
+            content.append("")
+            
             content.append(metadata.get("description", ""))
             content.append("")
             
@@ -95,6 +106,16 @@ def save_latest_descriptions():
     # ファイルに保存
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\n".join(content))
+    
+    # 最新版へのシンボリックリンクを作成/更新
+    if latest_link.exists() or latest_link.is_symlink():
+        latest_link.unlink()
+    try:
+        latest_link.symlink_to(output_file.name)
+    except Exception:
+        # Windows等でシンボリックリンクが作れない場合はコピー
+        import shutil
+        shutil.copy2(output_file, latest_link)
     
     return output_file
 
