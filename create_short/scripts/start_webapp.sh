@@ -11,13 +11,8 @@ if ! tmux has-session -t voicevox 2>/dev/null; then
     sleep 3
 fi
 
-#!/bin/bash
-
-#!/bin/bash
-
-# VOICEVOX Engine が起動しているか確認
-
 # Flaskアプリの起動
 echo "🚀 Webアプリを起動中..."
 echo "📱 ブラウザで http://localhost:5000 を開いてください"
-python app.py
+echo "🌐 Windows側からは http://172.28.33.38:5000 でアクセスできます"
+python3 app.py
