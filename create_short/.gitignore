@@ -28,6 +28,10 @@ client_secrets.json
 token.pickle
 *.json.backup
 
+# TikTok API 認証情報
+tiktok_token.json
+tiktok_credentials.json
+
 # AI API キー
 .env
 *.key
