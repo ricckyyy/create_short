@@ -34,6 +34,7 @@ tiktok_credentials.json
 
 # AI API キー
 .env
+.env.*
 *.key
 
 # ログ

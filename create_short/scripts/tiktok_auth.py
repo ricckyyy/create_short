@@ -80,7 +80,24 @@ def get_access_token(client_key, client_secret, redirect_uri):
     print("🎵 TikTok OAuth 認証")
     print("=" * 60)
     
-    # Step 1: 認証URLを生成
+    # PKCE用のcode_verifierとcode_challengeを生成
+    import hashlib
+    import base64
+    import secrets
+    
+    # code_verifier: ランダムな43-128文字の文字列
+    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+    
+    # code_challenge: code_verifierのSHA256ハッシュ
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    ).decode('utf-8').rstrip('=')
+    
+    print(f"\n🔐 PKCE生成:")
+    print(f"code_verifier: {code_verifier[:20]}...")
+    print(f"code_challenge: {code_challenge[:20]}...")
+    
+    # Step 1: 認証URLを生成（PKCEパラメータを追加）
     scopes = ["video.upload", "video.publish"]
     auth_url = (
         f"https://www.tiktok.com/v2/auth/authorize/"
@@ -88,6 +105,8 @@ def get_access_token(client_key, client_secret, redirect_uri):
         f"&scope={','.join(scopes)}"
         f"&response_type=code"
         f"&redirect_uri={redirect_uri}"
+        f"&code_challenge={code_challenge}"
+        f"&code_challenge_method=S256"
     )
     
     print("\n📱 Step 1: TikTokで認証")
@@ -113,7 +132,7 @@ def get_access_token(client_key, client_secret, redirect_uri):
     
     print(f"\n✅ 認証コード取得: {server.authorization_code[:20]}...")
     
-    # Step 3: 認証コードをアクセストークンに交換
+    # Step 3: 認証コードをアクセストークンに交換（PKCEパラメータを追加）
     print("\n🔑 Step 3: アクセストークンを取得中...")
     
     token_url = "https://open.tiktokapis.com/v2/oauth/token/"
@@ -122,7 +141,8 @@ def get_access_token(client_key, client_secret, redirect_uri):
         "client_secret": client_secret,
         "code": server.authorization_code,
         "grant_type": "authorization_code",
-        "redirect_uri": redirect_uri
+        "redirect_uri": redirect_uri,
+        "code_verifier": code_verifier  # PKCEパラメータ
     }
     
     response = requests.post(token_url, data=token_data)
