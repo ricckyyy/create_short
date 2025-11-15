@@ -1,0 +1,9 @@
+PowerShell（管理者権限）で以下をコピペして実行してください:
+
+$action = New-ScheduledTaskAction -Execute "wsl" -Argument "-d Ubuntu -u rt -- bash -c 'cd /home/rt/create_short && ./scripts/run_daily.sh >> data/logs/cron/cron_output.log 2>&1'"; $trigger = New-ScheduledTaskTrigger -Daily -At 6:00AM; $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -WakeToRun -ExecutionTimeLimit (New-TimeSpan -Hours 2) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5); $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Highest; Register-ScheduledTask -TaskName "TikTok_VideoGeneration" -Description "毎日6:00AMに動画を自動生成" -Action $action -Trigger $trigger -Settings $settings -Principal $principal; Write-Host "✅ 登録完了！" -ForegroundColor Green; Start-ScheduledTask -TaskName "TikTok_VideoGeneration"; Write-Host "テスト実行中..." -ForegroundColor Cyan
+
+確認:
+Get-ScheduledTaskInfo -TaskName "TikTok_VideoGeneration"
+
+ログ確認:
+wsl -d Ubuntu -u rt -- tail -f /home/rt/create_short/data/logs/cron/cron_output.log
