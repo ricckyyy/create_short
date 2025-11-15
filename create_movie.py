@@ -21,10 +21,16 @@ VOICEVOX_API = "http://127.0.0.1:50021"
 # 字幕画像作成（白文字＋黒縁）
 # -------------------------
 def create_subtitle_image(text, width=720, height=200, fontsize=30):
-    font_path = "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"
-    if os.name == "nt":
-        font_path = "C:\\Windows\\Fonts\\msgothic.ttc"
-    font = ImageFont.truetype(font_path, fontsize)
+    # クロスプラットフォーム対応のフォントパス
+    if os.name == "nt":  # Windows
+        font_path = Path("C:/Windows/Fonts/msgothic.ttc")
+    else:  # Linux/Unix
+        font_path = Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc")
+        if not font_path.exists():
+            # Ubuntu以外のLinux向けフォールバック
+            font_path = Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
+    
+    font = ImageFont.truetype(str(font_path), fontsize)
     img = Image.new("RGBA", (width, height), (0,0,0,0))
     draw = ImageDraw.Draw(img)
 
