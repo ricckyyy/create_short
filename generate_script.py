@@ -203,53 +203,94 @@ def generate_script_with_ollama(account_name):
 
 それでは、{account_name}向けの台本を10行で書いてください:"""
     
-    try:
-        response = requests.post(
-            OLLAMA_API_URL,
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "temperature": 0.7,
-                    "num_predict": 400,
-                    "top_p": 0.9,
-                    "repeat_penalty": 1.1
-                }
-            },
-            timeout=90
-        )
-        response.raise_for_status()
-        result = response.json()
-        script = result.get("response", "").strip()
-        
-        if not script:
-            raise ValueError("Ollama returned empty response")
-        
-        # クリーニング
-        lines = []
-        for line in script.split('\n'):
-            line = line.strip()
-            # 番号付きリストや不要な接頭辞を削除
-            if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
-                line = line.split('.', 1)[1].strip()
-            if line and not line.startswith(('台本', '以下', '例:', '---')):
-                lines.append(line)
-        
-        # 10行に調整
-        if len(lines) > 10:
-            lines = lines[:10]
-        elif len(lines) < 8:  # 8行未満は品質が悪いと判断
-            raise ValueError(f"Generated only {len(lines)} valid lines")
-        elif len(lines) < 10:
-            # 9行の場合は最後にフォロー促進を追加
-            lines.append("フォローで毎日更新中")
-        
-        return '\n'.join(lines)
-        
-    except Exception as e:
-        print(f"⚠️ Ollama エラー: {e}")
-        raise
+    max_retries = 3
+    import time
+    
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                wait_time = 2 ** attempt
+                print(f"   ⏳ リトライ {attempt + 1}/{max_retries} - {wait_time}秒待機...")
+                time.sleep(wait_time)
+            
+            print(f"   📡 Ollama API接続中... (試行 {attempt + 1}/{max_retries})")
+            response = requests.post(
+                OLLAMA_API_URL,
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "num_predict": 400,
+                        "top_p": 0.9,
+                        "repeat_penalty": 1.1
+                    }
+                },
+                timeout=90
+            )
+            response.raise_for_status()
+            result = response.json()
+            script = result.get("response", "").strip()
+            
+            if not script:
+                raise ValueError("Ollama returned empty response")
+            
+            print(f"   ✅ Ollama応答受信 ({len(script)}文字)")
+            
+            # クリーニング
+            lines = []
+            for line in script.split('\n'):
+                line = line.strip()
+                # 番号付きリストや不要な接頭辞を削除
+                if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
+                    line = line.split('.', 1)[1].strip()
+                if line and not line.startswith(('台本', '以下', '例:', '---')):
+                    lines.append(line)
+            
+            print(f"   📊 クリーニング後: {len(lines)}行")
+            
+            # 行数調整
+            if len(lines) > 10:
+                lines = lines[:10]
+                print(f"   ✂️ 10行にトリミング")
+            elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライ
+                if attempt < max_retries - 1:
+                    print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
+                    raise ValueError(f"Generated only {len(lines)} valid lines (minimum 5)")
+                else:
+                    # 最終試行では補完して続行
+                    print(f"   ⚠️ {len(lines)}行のみ。不足分を補完します...")
+                    while len(lines) < 5:
+                        lines.append("フォローで毎日更新中")
+            # 5～10行はそのまま使用（補完しない）
+            
+            print(f"   ✅ 最終: {len(lines)}行")
+            return '\n'.join(lines)
+            
+        except requests.exceptions.Timeout as e:
+            print(f"   ⏱️ タイムアウト発生 (試行 {attempt + 1}/{max_retries}): {e}")
+            if attempt == max_retries - 1:
+                print(f"   ❌ 最大リトライ回数に到達。Ollama接続失敗")
+                raise
+                
+        except requests.exceptions.ConnectionError as e:
+            print(f"   🔌 接続エラー発生 (試行 {attempt + 1}/{max_retries}): {e}")
+            if attempt == max_retries - 1:
+                print(f"   ❌ 最大リトライ回数に到達。接続失敗")
+                raise
+                
+        except KeyboardInterrupt:
+            print(f"\n   ⚠️ ユーザーによる中断検出")
+            raise
+            
+        except Exception as e:
+            print(f"   ❌ エラー (試行 {attempt + 1}/{max_retries}): {type(e).__name__}: {e}")
+            if attempt == max_retries - 1:
+                raise
+    
+    # ここには到達しないはずだが、念のため
+    raise Exception("Ollama API呼び出しに失敗しました")
 
 
 def generate_script_with_openai(account_name):

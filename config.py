@@ -158,18 +158,40 @@ def init_directories():
 
 
 def cleanup_temp_files():
-    """一時ファイルをクリーンアップ"""
+    """一時ファイルをクリーンアップ（エラーハンドリング付き）"""
+    deleted_count = 0
+    failed_count = 0
+    
     # 音声ファイルを削除
     if AUDIO_DIR.exists():
         for audio_file in AUDIO_DIR.glob("*.wav"):
-            audio_file.unlink()
-            print(f"🗑️ 削除: {audio_file.name}")
+            try:
+                audio_file.unlink()
+                print(f"🗑️ 削除: {audio_file.name}")
+                deleted_count += 1
+            except PermissionError:
+                print(f"⚠️ スキップ（使用中）: {audio_file.name}")
+                failed_count += 1
+            except Exception as e:
+                print(f"⚠️ 削除失敗: {audio_file.name} - {e}")
+                failed_count += 1
     
     # ダウンロード済み動画クリップを削除
     if ASSETS_VIDEO_DIR.exists():
         for video_file in ASSETS_VIDEO_DIR.glob("*.mp4"):
-            video_file.unlink()
-            print(f"🗑️ 削除: {video_file.name}")
+            try:
+                video_file.unlink()
+                print(f"🗑️ 削除: {video_file.name}")
+                deleted_count += 1
+            except PermissionError:
+                print(f"⚠️ スキップ（使用中）: {video_file.name}")
+                failed_count += 1
+            except Exception as e:
+                print(f"⚠️ 削除失敗: {video_file.name} - {e}")
+                failed_count += 1
+    
+    if deleted_count > 0 or failed_count > 0:
+        print(f"📊 クリーンアップ完了: 削除 {deleted_count}件 / スキップ {failed_count}件")
 
 
 if __name__ == "__main__":

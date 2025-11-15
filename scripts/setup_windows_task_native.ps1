@@ -1,4 +1,4 @@
-# Windows ネイティブ タスクスケジューラ 自動設定スクリプト
+﻿# Windows ネイティブ タスクスケジューラ 自動設定スクリプト
 # WSLを使わず、Windowsネイティブ環境で直接Python実行
 # 管理者権限のPowerShellで実行してください
 
@@ -8,7 +8,7 @@ Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
 
 # プロジェクトパスの設定（環境に合わせて変更してください）
-$ProjectPath = "C:\Users\rt\create_short"
+$ProjectPath = "G:\dev\create_short"
 $PythonExe = "python"  # Pythonがパスに通っている場合
 # $PythonExe = "C:\Users\rt\AppData\Local\Programs\Python\Python312\python.exe"  # 絶対パス指定も可能
 
