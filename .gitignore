@@ -56,3 +56,9 @@ Thumbs.db
 # 荳譎ゅヵ繧｡繧､繝ｫ
 clip*.mp4
 temp_*.mp4
+
+# テストファイル
+test_*.py
+full_test_log.txt
+output.txt
+short_output.txt
