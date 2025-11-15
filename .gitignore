@@ -34,7 +34,11 @@ tiktok_credentials.json
 
 # AI API キー
 .env
+.env.*
 *.key
+
+# データディレクトリ（動画・データベース）
+data/
 
 # ログ
 *.log
