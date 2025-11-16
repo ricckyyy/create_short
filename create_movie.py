@@ -120,8 +120,9 @@ def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, 
 # -------------------------
 # Pexels: 動画検索
 # -------------------------
-def search_pexels_video(query, api_key, max_results=1, max_retries=3):
+def search_pexels_video(query, api_key, max_results=15, max_retries=3):
     import time
+    import random
     print(f"  🔍 Pexels検索: '{query}'")
     headers = {"Authorization": api_key}
     
@@ -146,27 +147,33 @@ def search_pexels_video(query, api_key, max_results=1, max_retries=3):
                 print(f"     ⚠️ 検索結果なし: '{query}'")
                 return []
             
-            # 小さい動画を優先的に選択（SDまたはHD 720p）
-            urls = []
-            for v in vs:
-                if v.get("video_files"):
-                    # SD品質を優先、なければHD 720p、最後の手段でそれ以外
-                    video_files = v["video_files"]
-                    sd_files = [f for f in video_files if f.get("quality") == "sd"]
-                    hd_files = [f for f in video_files if f.get("quality") == "hd" and f.get("width", 0) <= 1280]
-                    
-                    if sd_files:
-                        urls.append(sd_files[0]["link"])
-                        print(f"     ✅ SD動画を選択 ({sd_files[0].get('width')}x{sd_files[0].get('height')})")
-                    elif hd_files:
-                        urls.append(hd_files[0]["link"])
-                        print(f"     ✅ HD動画を選択 ({hd_files[0].get('width')}x{hd_files[0].get('height')})")
-                    else:
-                        urls.append(video_files[0]["link"])
-                        print(f"     ✅ 動画を選択 ({video_files[0].get('quality')})")
+            print(f"     📦 {len(vs)}件の候補から選択中...")
             
-            print(f"     ✅ {len(urls)}件の動画を発見")
-            return urls
+            # ランダムに1つ選択して多様性を確保
+            selected_video = random.choice(vs)
+            
+            if selected_video.get("video_files"):
+                # SD品質を優先、なければHD 720p、最後の手段でそれ以外
+                video_files = selected_video["video_files"]
+                sd_files = [f for f in video_files if f.get("quality") == "sd"]
+                hd_files = [f for f in video_files if f.get("quality") == "hd" and f.get("width", 0) <= 1280]
+                
+                selected_file = None
+                if sd_files:
+                    selected_file = sd_files[0]
+                    print(f"     ✅ SD動画を選択 ({selected_file.get('width')}x{selected_file.get('height')})")
+                elif hd_files:
+                    selected_file = hd_files[0]
+                    print(f"     ✅ HD動画を選択 ({selected_file.get('width')}x{selected_file.get('height')})")
+                else:
+                    selected_file = video_files[0]
+                    print(f"     ✅ 動画を選択 ({selected_file.get('quality')})")
+                
+                if selected_file:
+                    return [selected_file["link"]]
+            
+            print(f"     ⚠️ 有効な動画ファイルが見つかりませんでした")
+            return []
             
         except requests.exceptions.Timeout as e:
             print(f"     ⏱️ タイムアウト発生 (試行 {attempt + 1}/{max_retries})")
