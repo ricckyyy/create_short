@@ -90,7 +90,9 @@ def save_latest_descriptions():
             
             tags = metadata.get("tags", [])
             if tags:
-                content.append(" ".join(tags))
+                # タグを #付きハッシュタグ形式に変換
+                hashtags = " ".join([f"#{tag}" if not tag.startswith('#') else tag for tag in tags])
+                content.append(hashtags)
             
             content.append("")
             content.append("━" * 70)

@@ -9,11 +9,20 @@ import json
 import random
 from datetime import datetime
 from pathlib import Path
+
+# .envファイルを読み込む
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("⚠️ python-dotenvがインストールされていません")
+
 from config import (
     ACCOUNTS,
     get_script_path,
     SCRIPTS_HISTORY_DIR,
-    init_directories
+    init_directories,
+    DATA_DIR
 )
 
 # 学習モジュールをインポート
@@ -112,60 +121,27 @@ ACCOUNT_PROMPTS = {
     },
     
     "映画紹介": {
-        "system": "あなたは日本語でTikTok/YouTube Shorts向けの映画紹介を作成するプロフェッショナルです。必ず日本語で、実在する映画の正確な情報を使用してください。",
+        "system": "あなたは映画紹介の専門家です。TikTok/YouTube Shorts向けの短い映画紹介を作成してください。",
         "prompt": """
-視聴維持率を最大化する映画紹介動画の台本を、完璧な日本語で作成してください。
+Netflix、Amazon Prime Video、Disney+などで観られる映画を1つ紹介してください。
+毎回違う映画を選んでください。
 
-【言語】
-- 必ず日本語で出力すること
-- 自然な日本語表現を使用
-- 英語や中国語は一切使用禁止
-- 映画タイトルのみ『』で囲んだ原題または邦題を使用
+- 実在する有名な映画を選ぶ
+- 映画の魅力を短く紹介
+- ネタバレなし
+- 視聴者を引き込む内容
+- 自然な日本語で
 
-【絶対厳守事項】
-- 必ず実在する有名映画を1作品選ぶこと（架空の映画は絶対NG）
-- Netflix、Amazon Prime Video配信中の作品を優先
-- 日本で知名度のある映画を選ぶ
-- 映画の実際のあらすじや設定を正確に使うこと
-- 知らない映画を創作してはいけない
-- 可能であれば視聴可能なプラットフォームを最後に言及
-
-【内容の正確性】
-- 映画の実際のストーリー要素のみ使用
-- 主要キャラクターや設定は事実に基づく
-- 有名なシーンや評価ポイントを正確に紹介
-- 憶測や創作は一切禁止
-
-【要件】
-- 10行（各行が1シーン）
-- 冒頭で映画タイトルと魅力を提示
-- ネタバレ厳禁のティーザー風
-- 実際の見どころを紹介
-- 視聴可能な場所を軽く示唆（知っている場合のみ）
-- 最後にフォロー促進
-
-【トーン】
-- 情熱的で正確
-- 興味を引くがネタバレしない
-- 実際の映画体験に忠実
-- すぐ観られることをアピール
-
-【フォーマット】
-各行を\\nで区切った日本語のテキストのみ。説明不要。
-
-例）
-Netflix独占、この映画やばい
-『オールド・ガード』観た人いる？
-不死身の戦士たちの物語
-何千年も生きてきた主人公
-でも突然不死の力が消え始める
-裏切り者は誰なのか
-アクションシーンが圧倒的
-シャーリーズ・セロン最強
-続編も制作決定してる
+例:
+『インセプション』この映画ヤバい
+夢の中に侵入する泥棒の物語
+現実と夢の境界が曖昧になる
+ラストのコマは回ってる？
+何度観ても新発見がある
+ディカプリオ最高傑作
 今すぐNetflixで観れるよ
 
-台本:
+それでは、別の映画を紹介してください:
 """,
         "keywords": ["mystery movie", "plot twist", "cinema", "thriller", "suspense film", "movie review", "spoiler free", "must watch", "hidden gem", "masterpiece"]
     }
@@ -179,6 +155,14 @@ def generate_script_with_ollama(account_name):
     # 学習プロンプトを生成（データがあれば）
     base_prompt = f"{config['system']}\n\n{config['prompt']}"
     
+    # 映画紹介の場合、過去のタイトルを追加
+    if account_name == "映画紹介":
+        past_titles = get_past_movie_titles()
+        if past_titles:
+            base_prompt += f"\n\n【重要】以下の映画は過去に紹介済みなので、絶対に選ばないでください:\n"
+            base_prompt += "\n".join([f"- {title}" for title in past_titles[-20:]])  # 最新20件を表示
+            base_prompt += "\n\nこれら以外の映画を選んでください。"
+    
     if LEARNING_ENABLED:
         try:
             # 過去の成功パターンを組み込む
@@ -189,6 +173,12 @@ def generate_script_with_ollama(account_name):
             enhanced_prompt = base_prompt
     else:
         enhanced_prompt = base_prompt
+    
+    # 映画紹介の場合、過去のタイトル数を表示
+    if account_name == "映画紹介":
+        past_titles = get_past_movie_titles()
+        if past_titles:
+            print(f"🎬 過去に紹介した映画: {len(past_titles)}本")
     
     # 明確な例を含めて品質向上
     example = """例:
@@ -202,19 +192,24 @@ def generate_script_with_ollama(account_name):
 ③を選んだ人、コメントで教えて
 フォローで毎日診断配信中"""
     
-    prompt = f"""{enhanced_prompt}
+    # 映画紹介の場合はよりシンプルなプロンプトを使用
+    if account_name == "映画紹介":
+        prompt = enhanced_prompt
+    else:
+        prompt = f"""{enhanced_prompt}
 
 {example if account_name == "心理テストラボ" else ""}
 
 上記のルールを守ってください:
-1. 10行ちょうどで書く
+1. 7-10行程度で書く
 2. 各行は短く、テンポよく
 3. 冒頭で引き込む
 4. 最後はフォロー促進
 5. 「台本:」などの余計な文字は書かない
 6. 例や説明は一切不要
+7. 回答は台本のみ
 
-それでは、{account_name}向けの台本を10行で書いてください:"""
+それでは、{account_name}向けの台本を書いてください:"""
     
     max_retries = 3
     import time
@@ -227,6 +222,9 @@ def generate_script_with_ollama(account_name):
                 time.sleep(wait_time)
             
             print(f"   📡 Ollama API接続中... (試行 {attempt + 1}/{max_retries})")
+            # 映画紹介の場合はtemperatureを高めに設定して多様性を向上
+            temp = 0.9 if account_name == "映画紹介" else 0.7
+            
             response = requests.post(
                 OLLAMA_API_URL,
                 json={
@@ -234,10 +232,10 @@ def generate_script_with_ollama(account_name):
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.7,
+                        "temperature": temp,
                         "num_predict": 400,
                         "top_p": 0.9,
-                        "repeat_penalty": 1.1
+                        "repeat_penalty": 1.2  # 繰り返しを減らす
                     }
                 },
                 timeout=90
@@ -251,22 +249,75 @@ def generate_script_with_ollama(account_name):
             
             print(f"   ✅ Ollama応答受信 ({len(script)}文字)")
             
+            # デバッグ: 生成された内容を表示
+            if os.getenv("DEBUG_SCRIPT"):
+                print(f"\n   === 生成された生のスクリプト ===")
+                print(script)
+                print(f"   === 生のスクリプト終了 ===\n")
+            
             # クリーニング
             lines = []
+            in_script = True  # 台本部分かどうかのフラグ
+            skipped_lines = []  # デバッグ用
+            
             for line in script.split('\n'):
                 line = line.strip()
+                
+                if not line:  # 空行はスキップ
+                    continue
+                
+                # 説明セクション開始を検出したら以降をスキップ
+                if line.startswith(('*', '•')) and any(keyword in line for keyword in ['ポイント', 'フック', '説明', '冒頭', '簡潔']):
+                    skipped_lines.append(f"説明セクション検出: {line[:50]}")
+                    in_script = False
+                    break
+                
+                if not in_script:
+                    break
+                
+                # 不要な接頭辞をスキップ
+                skip_prefixes = (
+                    '台本', '以下', '例:', '---', '**【',
+                    'はい、承知', '了解', 'かしこまりました',
+                    'ポイント:', '注意:', 'メモ:', '補足:',
+                    '※', 
+                    '（画面', '(画面', '（映像', '(映像', 
+                    '（ナレーション', '(ナレーション'
+                )
+                if line.startswith(skip_prefixes):
+                    skipped_lines.append(f"接頭辞スキップ: {line[:50]}")
+                    continue
+                
+                # **で囲まれた見出しをスキップ
+                if line.startswith('**') and line.endswith('**'):
+                    skipped_lines.append(f"見出しスキップ: {line[:50]}")
+                    continue
+                
+                # ハッシュタグ行をスキップ
+                if line.startswith('#') or line.count('#') >= 3:
+                    skipped_lines.append(f"ハッシュタグスキップ: {line[:50]}")
+                    continue
+                
                 # 番号付きリストや不要な接頭辞を削除
                 if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
                     line = line.split('.', 1)[1].strip()
-                if line and not line.startswith(('台本', '以下', '例:', '---')):
+                
+                if line:
                     lines.append(line)
+            
+            # デバッグ情報を表示
+            if len(lines) == 0 and skipped_lines:
+                print(f"   ⚠️ 全行がスキップされました。スキップ理由:")
+                for reason in skipped_lines[:5]:  # 最初の5件のみ表示
+                    print(f"      - {reason}")
             
             print(f"   📊 クリーニング後: {len(lines)}行")
             
-            # 行数調整
-            if len(lines) > 10:
-                lines = lines[:10]
-                print(f"   ✂️ 10行にトリミング")
+            # 行数調整（映画紹介は柔軟に、他は10行まで）
+            max_lines = 15 if account_name == "映画紹介" else 10
+            if len(lines) > max_lines:
+                lines = lines[:max_lines]
+                print(f"   ✂️ {max_lines}行にトリミング")
             elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライ
                 if attempt < max_retries - 1:
                     print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
@@ -394,6 +445,135 @@ def save_script_history(account_name, script):
         f.write(script)
     
     print(f"📝 台本を保存: {script_path}")
+    
+    # 映画紹介の場合、映画タイトルを記録
+    if account_name == "映画紹介":
+        save_movie_title(script)
+
+
+def get_past_movie_titles():
+    """過去に紹介した映画タイトルのリストを取得"""
+    history_file = DATA_DIR / "movie_history.json"
+    
+    if history_file.exists():
+        try:
+            with open(history_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("titles", [])
+        except Exception as e:
+            print(f"⚠️ 映画履歴読み込みエラー: {e}")
+            return []
+    return []
+
+
+def save_movie_title(script):
+    """台本から映画タイトルを抽出して履歴に保存"""
+    import re
+    
+    # 『タイトル』形式を検索
+    match = re.search(r'『([^』]+)』', script)
+    if match:
+        title = match.group(1)
+        history_file = DATA_DIR / "movie_history.json"
+        
+        # 既存の履歴を読み込み
+        if history_file.exists():
+            try:
+                with open(history_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except:
+                data = {"titles": []}
+        else:
+            data = {"titles": []}
+        
+        # タイトルを追加（重複チェック）
+        if title not in data["titles"]:
+            data["titles"].append(title)
+            print(f"📽️ 映画タイトル記録: {title}")
+        
+        # 履歴を保存（最新50件まで保持）
+        data["titles"] = data["titles"][-50:]
+        
+        with open(history_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def generate_keywords_from_script(script, account_name):
+    """台本の内容からPexels検索用のキーワードを生成"""
+    print(f"🔍 台本からキーワード抽出中...")
+    
+    script_lines = [line.strip() for line in script.split('\n') if line.strip()]
+    num_keywords = len(script_lines)
+    
+    if not USE_OLLAMA:
+        # Ollama未使用の場合はデフォルトキーワードを返す
+        print(f"   ⚠️ Ollama未使用、デフォルトキーワードを使用")
+        return ACCOUNT_PROMPTS[account_name]["keywords"][:num_keywords]
+    
+    prompt = f"""以下の台本から、各行に合った映像を検索するための英語キーワードを生成してください。
+
+【台本】
+{script}
+
+【要件】
+- 台本の各行（{num_keywords}行）に対して1つずつ英語キーワードを生成
+- Pexels動画検索用なので、視覚的に表現できる単語を選ぶ
+- 抽象的すぎる言葉は避け、具体的な映像イメージを
+- 各キーワードは1-3単語以内
+- 必ず{num_keywords}個のキーワードを生成
+
+【出力形式】
+キーワードのみを1行に1つずつ出力してください。説明は不要です。
+
+例:
+morning coffee
+business meeting
+happy family
+city skylight
+"""
+
+    try:
+        response = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.5,
+                    "num_predict": 200,
+                }
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+        result = response.json()
+        keywords_text = result.get("response", "").strip()
+        
+        # キーワードを抽出
+        keywords = []
+        for line in keywords_text.split('\n'):
+            line = line.strip()
+            # 番号や不要な接頭辞を削除
+            if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
+                line = line.split('.', 1)[1].strip()
+            if line and not line.startswith(('キーワード:', 'Keywords:', '例:', '-')):
+                keywords.append(line)
+        
+        print(f"   ✅ {len(keywords)}個のキーワードを生成")
+        
+        # 不足分をデフォルトキーワードで補完
+        if len(keywords) < num_keywords:
+            default_keywords = ACCOUNT_PROMPTS[account_name]["keywords"]
+            keywords.extend(default_keywords[:num_keywords - len(keywords)])
+            print(f"   ⚠️ デフォルトキーワードで{num_keywords - len(keywords)}個補完")
+        
+        return keywords[:num_keywords]
+        
+    except Exception as e:
+        print(f"   ❌ キーワード生成エラー: {e}")
+        print(f"   ⚠️ デフォルトキーワードを使用")
+        return ACCOUNT_PROMPTS[account_name]["keywords"][:num_keywords]
 
 
 def generate_all_scripts():
@@ -407,10 +587,9 @@ def generate_all_scripts():
         print('='*50)
         
         script = generate_script(account_name)
-        keywords = ACCOUNT_PROMPTS[account_name]["keywords"]
         
-        # キーワードをランダムにシャッフル（バリエーション追加）
-        random.shuffle(keywords)
+        # 台本の内容から動的にキーワードを生成
+        keywords = generate_keywords_from_script(script, account_name)
         
         account_config = ACCOUNTS[account_name]
         
