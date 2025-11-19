@@ -20,6 +20,7 @@ from config import (
     SCRIPTS_HISTORY_DIR,
     UPLOAD_DIR,
     PEXELS_API_KEY,
+    PIXABAY_API_KEY,
     ACCOUNTS,
     cleanup_temp_files
 )
@@ -42,11 +43,14 @@ def log_message(message):
         f.write(log_line + "\n")
 
 
-def save_latest_descriptions():
-    """最新のメタデータを読みやすい形式でファイルに保存（日付ごと）"""
-    # 日付ごとのファイル名
+def save_latest_descriptions(timestamp=None):
+    """最新のメタデータを読みやすい形式でファイルに保存（タイムスタンプ付き）"""
     date_str = datetime.now().strftime('%Y%m%d')
-    output_file = UPLOAD_DIR / f"descriptions_{date_str}.txt"
+    if timestamp is None:
+        timestamp = datetime.now().strftime('%H%M%S')
+    
+    # タイムスタンプ付きファイル名
+    output_file = UPLOAD_DIR / f"descriptions_{date_str}_{timestamp}.txt"
     
     # 最新版へのシンボリックリンク用
     latest_link = UPLOAD_DIR / "latest_descriptions.txt"
@@ -169,7 +173,7 @@ def generate_daily_videos():
                 )
                 log_message(f"✅ 音声生成完了: {voice_file}")
                 
-                # 動画生成（タイムスタンプ付き）
+                # 動画生成（タイムスタンプ付き、Pixabayフォールバック対応）
                 log_message(f"🎬 動画生成中...")
                 video_path = get_video_path(acc["name"], date_str, timestamp, status="draft")
                 create_video_with_keywords(
@@ -177,7 +181,8 @@ def generate_daily_videos():
                     acc["keywords"], 
                     PEXELS_API_KEY, 
                     voice_file, 
-                    output_file=str(video_path)
+                    output_file=str(video_path),
+                    pixabay_key=PIXABAY_API_KEY
                 )
                 log_message(f"✅ 動画生成完了: {video_path}")
                 
@@ -254,7 +259,7 @@ def generate_daily_videos():
             log_message("\n" + "="*60)
             log_message("📝 投稿用説明文を保存中...")
             log_message("="*60)
-            descriptions_file = save_latest_descriptions()
+            descriptions_file = save_latest_descriptions(timestamp)
             log_message(f"✅ 保存完了: {descriptions_file}")
             log_message(f"📄 確認: cat {descriptions_file}")
             log_message("="*60)

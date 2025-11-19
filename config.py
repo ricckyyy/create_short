@@ -73,6 +73,10 @@ ACCOUNTS = {
 # Pexels API
 PEXELS_API_KEY = "QqcFiUzxOsDiOYP3sUQyty0hKhTGdzgBQdPQ8nymB7Y1KaXkYocVkctS"
 
+# Pixabay API（フォールバック用）
+# 登録: https://pixabay.com/api/docs/
+PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", None)
+
 # VOICEVOX
 VOICEVOX_API_URL = "http://127.0.0.1:50021"
 

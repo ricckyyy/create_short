@@ -197,10 +197,22 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             status_code = r.status_code if 'r' in locals() else 'N/A'
             print(f"     🚫 HTTPエラー (ステータスコード: {status_code})")
             print(f"        エラー詳細: {type(e).__name__}: {e}")
-            print(f"     ❌ APIエラー。リトライしません: '{query}'")
-            import traceback
-            traceback.print_exc()
-            return []
+            
+            # 503 (Service Unavailable), 429 (Rate Limit), 502 (Bad Gateway) はリトライする
+            if status_code in [502, 503, 429]:
+                if attempt == max_retries - 1:
+                    print(f"     ❌ 最大リトライ回数に到達。APIエラー: '{query}'")
+                    import traceback
+                    traceback.print_exc()
+                    return []
+                else:
+                    print(f"     ⏳ サーバー一時的エラー、リトライします...")
+            else:
+                # それ以外のHTTPエラー（404, 401など）はリトライしない
+                print(f"     ❌ APIエラー。リトライしません: '{query}'")
+                import traceback
+                traceback.print_exc()
+                return []
             
         except KeyboardInterrupt:
             print(f"\n     ⚠️ ユーザーによる中断検出")
@@ -217,6 +229,108 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
                 return []
     
     return []
+
+# -------------------------
+# Pixabay: 動画検索（フォールバック）
+# -------------------------
+def search_pixabay_video(query, api_key, max_results=15, max_retries=3):
+    import time
+    import random
+    print(f"  🔍 Pixabay検索: '{query}'")
+    
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                wait_time = 2 ** attempt
+                print(f"     ⏳ リトライ {attempt + 1}/{max_retries} - {wait_time}秒待機...")
+                time.sleep(wait_time)
+            
+            print(f"     📡 API接続中... (試行 {attempt + 1}/{max_retries})")
+            r = requests.get(
+                "https://pixabay.com/api/videos/",
+                params={
+                    "key": api_key,
+                    "q": query,
+                    "per_page": max_results
+                },
+                timeout=30
+            )
+            r.raise_for_status()
+            data = r.json()
+            vs = data.get("hits", [])
+            
+            if not vs:
+                print(f"     ⚠️ 検索結果なし: '{query}'")
+                return []
+            
+            print(f"     📦 {len(vs)}件の候補から選択中...")
+            
+            # ランダムに1つ選択
+            selected_video = random.choice(vs)
+            
+            if selected_video.get("videos"):
+                videos = selected_video["videos"]
+                # medium (1280x720) を優先、次にsmall、tiny
+                for quality in ["medium", "small", "tiny"]:
+                    if quality in videos:
+                        video_url = videos[quality]["url"]
+                        width = videos[quality]["width"]
+                        height = videos[quality]["height"]
+                        print(f"     ✅ {quality}動画を選択 ({width}x{height})")
+                        return [video_url]
+            
+            print(f"     ⚠️ 有効な動画ファイルが見つかりませんでした")
+            return []
+            
+        except requests.exceptions.Timeout:
+            print(f"     ⏱️ タイムアウト発生 (試行 {attempt + 1}/{max_retries})")
+            if attempt == max_retries - 1:
+                print(f"     ❌ 最大リトライ回数に到達。検索失敗: '{query}'")
+                return []
+                
+        except requests.exceptions.ConnectionError:
+            print(f"     🔌 接続エラー発生 (試行 {attempt + 1}/{max_retries})")
+            if attempt == max_retries - 1:
+                print(f"     ❌ 最大リトライ回数に到達。接続失敗: '{query}'")
+                return []
+                
+        except requests.exceptions.HTTPError as e:
+            status_code = r.status_code if 'r' in locals() else 'N/A'
+            print(f"     🚫 HTTPエラー (ステータスコード: {status_code})")
+            if status_code in [502, 503, 429]:
+                if attempt == max_retries - 1:
+                    print(f"     ❌ 最大リトライ回数に到達。APIエラー: '{query}'")
+                    return []
+            else:
+                print(f"     ❌ APIエラー。リトライしません: '{query}'")
+                return []
+                
+        except Exception as e:
+            print(f"     ❌ 予期しないエラー (試行 {attempt + 1}/{max_retries}): {e}")
+            if attempt == max_retries - 1:
+                print(f"     ❌ 最大リトライ回数に到達。検索失敗: '{query}'")
+                return []
+    
+    return []
+
+# -------------------------
+# 動画検索（Pexels優先、フォールバックでPixabay）
+# -------------------------
+def search_video_with_fallback(query, pexels_key, pixabay_key=None):
+    """Pexelsを優先し、失敗時にPixabayにフォールバック"""
+    # Pexelsで検索
+    urls = search_pexels_video(query, pexels_key)
+    if urls:
+        return urls, "Pexels"
+    
+    # Pixabay APIキーが設定されていればフォールバック
+    if pixabay_key:
+        print(f"  ⚠️ Pexels検索失敗、Pixabayにフォールバック...")
+        urls = search_pixabay_video(query, pixabay_key)
+        if urls:
+            return urls, "Pixabay"
+    
+    return [], None
 
 # -------------------------
 # 動画ダウンロード
@@ -302,7 +416,7 @@ def download_video(url, filename, max_retries=3):
 # -------------------------
 # 台本＋字幕つき動画生成
 # -------------------------
-def create_video_with_keywords(script_lines, keywords, api_key, voice_file, output_file="final_video.mp4"):
+def create_video_with_keywords(script_lines, keywords, api_key, voice_file, output_file="final_video.mp4", pixabay_key=None):
     print(f"\n🎬 動画生成開始: {output_file}")
     print(f"   台本行数: {len(script_lines)}")
     print(f"   キーワード数: {len(keywords)}")
@@ -316,12 +430,14 @@ def create_video_with_keywords(script_lines, keywords, api_key, voice_file, outp
         print(f"   1行あたり: {dur_per_line:.2f}秒")
         clips = []
 
-        # 動画クリップを取得（新しいディレクトリに保存）
-        print(f"\n📥 ステップ2: Pexels動画取得 ({len(keywords)}件)")
+        # 動画クリップを取得（フォールバック対応）
+        print(f"\n📥 ステップ2: 動画取得 ({len(keywords)}件)")
         video_files = []
         for i, kw in enumerate(keywords):
             print(f"\n[{i+1}/{len(keywords)}] キーワード: '{kw}'")
-            urls = search_pexels_video(kw, api_key)
+            urls, source = search_video_with_fallback(kw, api_key, pixabay_key)
+            if source:
+                print(f"  ✅ {source}から取得")
             clip_filename = ASSETS_VIDEO_DIR / f"clip_{i}_{os.getpid()}.mp4"
             vid_file = download_video(urls[0] if urls else "", str(clip_filename))
             video_files.append(vid_file)

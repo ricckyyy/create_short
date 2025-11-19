@@ -46,7 +46,21 @@ TikTok/YouTube Shorts向けの縦型動画（720x1280）を自動生成するWeb
 - tmux（バックグラウンド実行用）
 
 ### API キー
-- Pexels API キー（`create_movie.py` に設定済み）
+- **Pexels API** キー（`config.py` に設定済み）
+- **Pixabay API** キー（オプション、フォールバック用）
+  - 環境変数 `PIXABAY_API_KEY` で設定
+  - 登録: https://pixabay.com/api/docs/
+  - `.env` ファイルまたはシステム環境変数で設定可能
+
+### 環境変数設定（オプション）
+`.env` ファイルをプロジェクトルートに作成:
+```bash
+# Pixabay API（Pexelsが使えない時のフォールバック）
+PIXABAY_API_KEY=your_pixabay_api_key_here
+
+# Ollama設定
+OLLAMA_MODEL=gemma3:4b
+```
 
 ## 🚀 セットアップ
 
