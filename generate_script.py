@@ -576,10 +576,16 @@ city skylight
         return ACCOUNT_PROMPTS[account_name]["keywords"][:num_keywords]
 
 
-def generate_all_scripts():
-    """全アカウントの台本を生成"""
+def generate_all_scripts(timestamp=None):
+    """全アカウントの台本を生成
+    
+    Args:
+        timestamp: ファイル名に付与するタイムスタンプ（省略時は自動生成）
+    """
     accounts_data = []
     date_str = datetime.now().strftime("%Y%m%d")
+    if timestamp is None:
+        timestamp = datetime.now().strftime("%H%M%S")
     
     for account_name in ACCOUNTS.keys():
         print(f"\n{'='*50}")
@@ -610,8 +616,8 @@ def generate_all_scripts():
         print(script)
         print("-" * 50)
     
-    # JSON形式で保存（スクリプト履歴ディレクトリに）
-    output_file = SCRIPTS_HISTORY_DIR / f"scripts_{datetime.now().strftime('%Y%m%d')}.json"
+    # JSON形式で保存（スクリプト履歴ディレクトリに、タイムスタンプ付き）
+    output_file = SCRIPTS_HISTORY_DIR / f"scripts_{date_str}_{timestamp}.json"
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(accounts_data, f, ensure_ascii=False, indent=2)
     

@@ -131,14 +131,18 @@ def generate_daily_videos():
         
         # Step 1: AI台本生成
         log_message("\n📝 Step 1: AI台本生成")
-        accounts_data = generate_all_scripts()
+        
+        # タイムスタンプを一度だけ生成
+        date_str = datetime.now().strftime('%Y%m%d')
+        timestamp = datetime.now().strftime('%H%M%S')
+        
+        accounts_data = generate_all_scripts(timestamp)
         
         # Step 2: 各アカウントの動画生成
         log_message("\n🎬 Step 2: 動画生成")
         
         success_count = 0
         error_count = 0
-        date_str = datetime.now().strftime('%Y%m%d')
         
         for acc in accounts_data:
             try:
@@ -153,9 +157,9 @@ def generate_daily_videos():
                 speaker_index = account_config.get("voice_speaker", 1)
                 pitch = account_config.get("voice_pitch", 0)
                 
-                # 音声生成（新しいパス構造）
+                # 音声生成（タイムスタンプ付き）
                 log_message(f"🎙️ 音声生成中...")
-                audio_path = get_audio_path(acc["name"], date_str)
+                audio_path = get_audio_path(acc["name"], date_str, timestamp)
                 voice_file = generate_voice(
                     acc["script"], 
                     speaker_index=speaker_index, 
@@ -165,10 +169,9 @@ def generate_daily_videos():
                 )
                 log_message(f"✅ 音声生成完了: {voice_file}")
                 
-                # 動画生成（新しいパス構造）
+                # 動画生成（タイムスタンプ付き）
                 log_message(f"🎬 動画生成中...")
-                log_message(f"🎬 動画生成中...")
-                video_path = get_video_path(acc["name"], date_str, status="draft")
+                video_path = get_video_path(acc["name"], date_str, timestamp, status="draft")
                 create_video_with_keywords(
                     script_lines, 
                     acc["keywords"], 
@@ -179,11 +182,11 @@ def generate_daily_videos():
                 log_message(f"✅ 動画生成完了: {video_path}")
                 
                 # メタデータ生成（タイトル・説明文・ハッシュタグ）
-                log_message(f"� メタデータ生成中...")
+                log_message(f"📊 メタデータ生成中...")
                 metadata = generate_metadata(acc["name"], acc["script"])
                 
-                # メタデータをファイルに保存（タイムスタンプ不要なのでhistoryディレクトリ直接指定）
-                metadata_file = SCRIPTS_HISTORY_DIR / f"metadata_{acc['slug']}_{date_str}.json"
+                # メタデータをファイルに保存（タイムスタンプ付き）
+                metadata_file = SCRIPTS_HISTORY_DIR / f"metadata_{acc['slug']}_{date_str}_{timestamp}.json"
                 with open(metadata_file, "w", encoding="utf-8") as f:
                     json.dump({
                         "title": metadata["title"],

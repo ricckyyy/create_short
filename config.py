@@ -78,21 +78,25 @@ VOICEVOX_API_URL = "http://127.0.0.1:50021"
 
 # === ファイル命名規則 ===
 
-def get_video_filename(account_name, date_str, status="draft"):
-    """動画ファイル名を生成"""
+def get_video_filename(account_name, date_str, timestamp=None, status="draft"):
+    """動画ファイル名を生成（タイムスタンプ付き）"""
     account = ACCOUNTS.get(account_name)
     if not account:
+        if timestamp:
+            return f"video_{date_str}_{timestamp}.mp4"
         return f"video_{date_str}.mp4"
     
     prefix = account["video_prefix"]
     slug = account["slug"]
     
+    if timestamp:
+        return f"{prefix}_{slug}_{date_str}_{timestamp}.mp4"
     return f"{prefix}_{slug}_{date_str}.mp4"
 
 
-def get_video_path(account_name, date_str, status="draft"):
-    """動画ファイルのフルパスを取得"""
-    filename = get_video_filename(account_name, date_str, status)
+def get_video_path(account_name, date_str, timestamp=None, status="draft"):
+    """動画ファイルのフルパスを取得（タイムスタンプ付き）"""
+    filename = get_video_filename(account_name, date_str, timestamp, status)
     
     if status == "published":
         return VIDEOS_PUBLISHED_DIR / filename
@@ -100,16 +104,18 @@ def get_video_path(account_name, date_str, status="draft"):
         return VIDEOS_DRAFT_DIR / filename
 
 
-def get_audio_filename(account_name, date_str):
-    """音声ファイル名を生成"""
+def get_audio_filename(account_name, date_str, timestamp=None):
+    """音声ファイル名を生成（タイムスタンプ付き）"""
     account = ACCOUNTS.get(account_name)
     slug = account["slug"] if account else "audio"
+    if timestamp:
+        return f"voice_{slug}_{date_str}_{timestamp}.wav"
     return f"voice_{slug}_{date_str}.wav"
 
 
-def get_audio_path(account_name, date_str):
-    """音声ファイルのフルパスを取得"""
-    filename = get_audio_filename(account_name, date_str)
+def get_audio_path(account_name, date_str, timestamp=None):
+    """音声ファイルのフルパスを取得（タイムスタンプ付き）"""
+    filename = get_audio_filename(account_name, date_str, timestamp)
     return AUDIO_DIR / filename
 
 
