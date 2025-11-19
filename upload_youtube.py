@@ -256,10 +256,20 @@ def generate_tags_from_script(script: str, account_name: str, base_tags: list) -
     if account_name == "映画紹介":
         movie_match = re.search(r'『([^』]+)』', script)
         if movie_match:
-            movie_title = movie_match.group(1)
-            # 映画タイトルをタグに追加
-            additional_tags = [movie_title]
+            movie_title = movie_match.group(1).strip()
+            additional_tags = []
+            
+            # 映画タイトルをそのまま追加
+            additional_tags.append(movie_title)
             print(f"   ✅ 映画タイトルタグ追加: {movie_title}")
+            
+            # 副題がある場合、メインタイトルだけも追加（スペース区切りの最初の部分）
+            # 例: 「パラサイト 半地下の家族」→「パラサイト」も追加
+            if ' ' in movie_title or '　' in movie_title:
+                main_title = movie_title.split()[0]
+                if main_title != movie_title and len(main_title) >= 2:
+                    additional_tags.append(main_title)
+                    print(f"   ✅ メインタイトルタグ追加: {main_title}")
             
             # AIで関連タグを生成
             ai_tags = generate_tags_with_ai(script, account_name)
@@ -318,7 +328,7 @@ def generate_tags_with_ai(script: str, account_name: str) -> list:
                     "num_predict": 100,
                 }
             },
-            timeout=30
+            timeout=60  # 30秒から60秒に延長
         )
         response.raise_for_status()
         result = response.json()
