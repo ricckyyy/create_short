@@ -6,6 +6,7 @@ YouTube Shorts 自動アップロードスクリプト
 import os
 import pickle
 import sys
+import re
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -14,6 +15,15 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
+
+# Ollama APIを使用する場合
+try:
+    import requests
+    USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() not in ("false", "0", "no")
+    OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+except ImportError:
+    USE_OLLAMA = False
 
 # YouTube API スコープ
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
@@ -180,9 +190,8 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 
 #心理テスト #性格診断 #Shorts
             """.strip(),
-            "tags": [
+            "base_tags": [
                 "心理テスト", "性格診断", "心理学", "診断テスト",
-                "性格", "自己分析", "占い", "心理",
                 "Shorts", "ショート動画"
             ]
         },
@@ -196,9 +205,8 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 
 #怖い話 #都市伝説 #Shorts
             """.strip(),
-            "tags": [
+            "base_tags": [
                 "怖い話", "都市伝説", "ホラー", "心霊",
-                "オカルト", "恐怖", "ミステリー", "不思議",
                 "Shorts", "ショート動画"
             ]
         },
@@ -212,9 +220,8 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 
 #映画紹介 #映画レビュー #Shorts
             """.strip(),
-            "tags": [
+            "base_tags": [
                 "映画紹介", "映画レビュー", "映画", "おすすめ映画",
-                "洋画", "邦画", "名作", "映画好き",
                 "Shorts", "ショート動画"
             ]
         }
@@ -226,11 +233,116 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
     first_line = script.split('\n')[0] if script else "必見"
     title = f"{template['title_prefix']}{first_line[:30]}"
     
+    # 台本からタグを動的に生成
+    tags = generate_tags_from_script(script, account_name, template["base_tags"])
+    
     return {
         "title": title,
         "description": template["description"],
-        "tags": template["tags"]
+        "tags": tags
     }
+
+
+def generate_tags_from_script(script: str, account_name: str, base_tags: list) -> list:
+    """台本の内容から動的にタグを生成"""
+    
+    if not script or not USE_OLLAMA:
+        # スクリプトがないか、Ollamaが使えない場合はベースタグを返す
+        return base_tags
+    
+    print(f"🏷️ 台本からタグを生成中...")
+    
+    # 映画紹介の場合、映画タイトルを抽出
+    if account_name == "映画紹介":
+        movie_match = re.search(r'『([^』]+)』', script)
+        if movie_match:
+            movie_title = movie_match.group(1)
+            # 映画タイトルをタグに追加
+            additional_tags = [movie_title]
+            print(f"   ✅ 映画タイトルタグ追加: {movie_title}")
+            
+            # AIで関連タグを生成
+            ai_tags = generate_tags_with_ai(script, account_name)
+            if ai_tags:
+                additional_tags.extend(ai_tags)
+            
+            # ベースタグ + 追加タグ（最大10個まで）
+            all_tags = base_tags + additional_tags
+            return list(dict.fromkeys(all_tags))[:10]  # 重複削除＆10個まで
+    
+    # その他のアカウントもAIでタグ生成
+    ai_tags = generate_tags_with_ai(script, account_name)
+    if ai_tags:
+        all_tags = base_tags + ai_tags
+        return list(dict.fromkeys(all_tags))[:10]  # 重複削除＆10個まで
+    
+    return base_tags
+
+
+def generate_tags_with_ai(script: str, account_name: str) -> list:
+    """AIを使って台本から関連タグを生成"""
+    
+    if not USE_OLLAMA:
+        return []
+    
+    prompt = f"""以下の{account_name}向けの台本から、YouTubeのタグ（ハッシュタグ）を3-5個生成してください。
+
+【台本】
+{script}
+
+【要件】
+- 台本の内容に関連する具体的なタグ
+- 日本語で簡潔に（2-5文字）
+- YouTubeで検索されやすい言葉
+- 既存の「{account_name}」「Shorts」以外
+- 3-5個のタグのみ
+
+【出力形式】
+タグのみを1行に1つずつ出力。説明不要。
+
+例:
+サプライズ
+恋愛
+感動
+"""
+
+    try:
+        response = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "num_predict": 100,
+                }
+            },
+            timeout=30
+        )
+        response.raise_for_status()
+        result = response.json()
+        tags_text = result.get("response", "").strip()
+        
+        # タグを抽出
+        tags = []
+        for line in tags_text.split('\n'):
+            line = line.strip()
+            # 番号や不要な接頭辞を削除
+            if line.startswith(('1.', '2.', '3.', '4.', '5.')):
+                line = line.split('.', 1)[1].strip()
+            # #を削除
+            line = line.replace('#', '').strip()
+            if line and len(line) <= 10 and not line.startswith(('タグ:', '例:')):
+                tags.append(line)
+        
+        if tags:
+            print(f"   ✅ AI生成タグ: {', '.join(tags[:5])}")
+        return tags[:5]  # 最大5個
+        
+    except Exception as e:
+        print(f"   ⚠️ タグ生成エラー: {e}")
+        return []
 
 
 if __name__ == "__main__":
