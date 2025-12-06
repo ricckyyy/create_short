@@ -226,28 +226,40 @@ def get_analytics_stats():
 @app.route('/api/analytics/update', methods=['POST'])
 def update_analytics():
     """再生数などのメトリクスを更新"""
-    data = request.json
-    video_path = data.get('video_path')
-    views = data.get('views')
-    likes = data.get('likes')
-    comments = data.get('comments')
-    retention_rate = data.get('retention_rate')
+    try:
+        data = request.json
+        video_path = data.get('video_path')
+        views = data.get('views')
+        likes = data.get('likes')
+        comments = data.get('comments')
+        retention_rate = data.get('retention_rate')
+        
+        if not video_path:
+            return jsonify({"error": "video_path is required"}), 400
+        
+        # 動画IDを取得
+        video = get_video_by_path(video_path)
+        if not video:
+            # パスを正規化して再試行
+            normalized_path = str(Path(video_path).resolve())
+            video = get_video_by_path(normalized_path)
+            
+        if not video:
+            return jsonify({"error": f"Video not found: {video_path}"}), 404
+        
+        # メトリクス更新
+        update_video_metrics(
+            video_id=video['id'],
+            views=views,
+            likes=likes,
+            comments=comments,
+            retention_rate=retention_rate
+        )
+        
+        return jsonify({"success": True, "video_id": video['id']})
     
-    # 動画IDを取得
-    video = get_video_by_path(video_path)
-    if not video:
-        return jsonify({"error": "Video not found"}), 404
-    
-    # メトリクス更新
-    update_video_metrics(
-        video_id=video['id'],
-        views=views,
-        likes=likes,
-        comments=comments,
-        retention_rate=retention_rate
-    )
-    
-    return jsonify({"success": True, "video_id": video['id']})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/analytics/insights/<account_name>')
 def get_insights(account_name):

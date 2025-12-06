@@ -88,18 +88,46 @@ pip install -r requirements.txt
 ## 🎮 使い方
 
 ### Webアプリの起動
+
+**Linux/Mac:**
 ```bash
 ./scripts/start_webapp.sh
 ```
 
+**Windows:**
+```powershell
+# PowerShellで実行
+python app.py
+```
+
 ブラウザで `http://localhost:5000` を開きます。
 
+### タスクスケジューラ設定（Windows）
+
+**画面ロックやスリープ中でも自動実行:**
+```powershell
+# 管理者権限でPowerShellを起動
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\setup_windows_task_native.ps1
+```
+
+- 初回実行時にWindowsログインパスワードの入力が必要
+- 毎日6:00 AMに自動実行
+- スリープ状態から自動で復帰して実行
+
 ### 自動生成システムのテスト（API不要）
+
+**Linux/Mac:**
 ```bash
 ./scripts/test_generation.sh
 ```
 
-### cronで毎日自動実行を設定
+**Windows:**
+```powershell
+python daily_generation.py
+```
+
+### cronで毎日自動実行を設定（Linux/Mac）
 ```bash
 ./scripts/setup_cron.sh
 ```

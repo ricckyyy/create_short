@@ -24,11 +24,15 @@ def create_subtitle_image(text, width=720, height=200, fontsize=30):
     # クロスプラットフォーム対応のフォントパス
     if os.name == "nt":  # Windows
         font_path = Path("C:/Windows/Fonts/msgothic.ttc")
-    else:  # Linux/Unix
-        font_path = Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc")
+    else:  # Linux/Unix (WSL含む)
+        # WSL環境ではopentypeフォルダのNoto CJKを使用
+        font_path = Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
         if not font_path.exists():
-            # Ubuntu以外のLinux向けフォールバック
-            font_path = Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
+            # フォールバック: truetypeフォルダ
+            font_path = Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc")
+            if not font_path.exists():
+                # 最終フォールバック: Windows側のフォント
+                font_path = Path("/mnt/c/Windows/Fonts/msgothic.ttc")
     
     font = ImageFont.truetype(str(font_path), fontsize)
     img = Image.new("RGBA", (width, height), (0,0,0,0))
@@ -100,7 +104,7 @@ def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, 
         # synthesis
         print(f"   ステップ2: 音声合成中...")
         url_speech = f"{VOICEVOX_API}/synthesis?speaker={style_id}"
-        res2 = requests.post(url_speech, json=audio_query, timeout=60)
+        res2 = requests.post(url_speech, json=audio_query, timeout=300)
         res2.raise_for_status()
         
         with open(filename, "wb") as f:

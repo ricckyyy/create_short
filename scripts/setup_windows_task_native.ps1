@@ -51,9 +51,10 @@ $LogFile = Join-Path $LogDir "cron_output.log"
 
 # タスクアクション（実行するコマンド）
 # Windowsネイティブ環境でPythonを直接実行
+# 出力をログファイルにリダイレクト
 $action = New-ScheduledTaskAction `
-    -Execute $PythonExe `
-    -Argument "$ProjectPath\daily_generation.py" `
+    -Execute "powershell.exe" `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"cd '$ProjectPath'; & '$PythonExe' daily_generation.py 2>&1 | Tee-Object -FilePath '$LogFile' -Append`"" `
     -WorkingDirectory $ProjectPath
 
 # トリガー（実行タイミング）
@@ -65,38 +66,58 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -WakeToRun `
     -ExecutionTimeLimit (New-TimeSpan -Hours 2) `
-    -StartWhenAvailable
+    -StartWhenAvailable `
+    -MultipleInstances IgnoreNew
 
 # プリンシパル（実行ユーザー設定）
+# ログオンしていなくても実行可能に変更
 $principal = New-ScheduledTaskPrincipal `
     -UserId "$env:USERDOMAIN\$env:USERNAME" `
     -LogonType S4U `
-    -RunLevel Limited
+    -RunLevel Highest
 
 # タスク登録
-Register-ScheduledTask `
-    -TaskName $TaskName `
-    -Action $action `
-    -Trigger $trigger `
-    -Settings $settings `
-    -Principal $principal `
-    -Description "TikTok/YouTube Shorts用動画を毎日自動生成（Windowsネイティブ版）" | Out-Null
-
-Write-Host ""
-Write-Host "✅ タスクスケジューラ設定完了！" -ForegroundColor Green
+try {
+    Register-ScheduledTask `
+        -TaskName $TaskName `
+        -Action $action `
+        -Trigger $trigger `
+        -Settings $settings `
+        -Principal $principal `
+        -Description "TikTok/YouTube Shorts用動画を毎日自動生成（Windowsネイティブ版、画面ロック時も実行）" | Out-Null
+    
+    Write-Host ""
+    Write-Host "✅ タスクスケジューラ設定完了！" -ForegroundColor Green
+} catch {
+    Write-Host ""
+    Write-Host "❌ タスク登録エラー" -ForegroundColor Red
+    Write-Host "エラー内容: $_" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "【対処方法】" -ForegroundColor Cyan
+    Write-Host "1. PowerShellを「管理者として実行」で起動"
+    Write-Host "2. このスクリプトを再実行"
+    Write-Host "3. パスワード入力を求められた場合は、Windowsログインパスワードを入力"
+    exit 1
+}
 Write-Host ""
 Write-Host "【設定内容】" -ForegroundColor Cyan
 Write-Host "タスク名      : $TaskName"
 Write-Host "実行時刻      : 毎日 6:00 AM"
-Write-Host "実行コマンド  : $PythonExe"
-Write-Host "引数          : $ProjectPath\daily_generation.py"
+Write-Host "実行方法      : PowerShell経由でPython実行"
 Write-Host "作業ディレクトリ: $ProjectPath"
 Write-Host "ログファイル  : $LogFile"
+Write-Host "特権レベル    : 最上位（管理者権限）"
+Write-Host "ログオンタイプ: パスワード保存（画面ロック時も実行）"
+Write-Host ""
+Write-Host "【重要】スリープ解除設定" -ForegroundColor Yellow
+Write-Host "✅ タスク実行時にスリープを自動解除する設定を有効化済み"
+Write-Host "⚠️ BIOS/UEFIで「Wake on RTC」が有効になっている必要があります"
 Write-Host ""
 Write-Host "【確認方法】" -ForegroundColor Cyan
 Write-Host "1. タスクスケジューラを開く（Win + R → taskschd.msc）"
 Write-Host "2. 「$TaskName」を検索"
 Write-Host "3. 右クリック → 「実行する」でテスト可能"
+Write-Host "4. 条件タブで「タスクを実行するためにスリープを解除する」にチェックが入っていることを確認"
 Write-Host ""
 Write-Host "【手動実行テスト】" -ForegroundColor Cyan
 Write-Host "cd $ProjectPath"

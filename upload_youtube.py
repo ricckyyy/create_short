@@ -20,8 +20,8 @@ from googleapiclient.errors import HttpError
 try:
     import requests
     USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() not in ("false", "0", "no")
-    OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+    OLLAMA_API_URL = "http://127.0.0.1:11434/api/chat"
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma2:9b")
 except ImportError:
     USE_OLLAMA = False
 
@@ -321,7 +321,9 @@ def generate_tags_with_ai(script: str, account_name: str) -> list:
             OLLAMA_API_URL,
             json={
                 "model": OLLAMA_MODEL,
-                "prompt": prompt,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
                 "stream": False,
                 "options": {
                     "temperature": 0.3,
@@ -332,7 +334,7 @@ def generate_tags_with_ai(script: str, account_name: str) -> list:
         )
         response.raise_for_status()
         result = response.json()
-        tags_text = result.get("response", "").strip()
+        tags_text = result.get("message", {}).get("content", "").strip()
         
         # タグを抽出
         tags = []

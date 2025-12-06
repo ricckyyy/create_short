@@ -46,8 +46,8 @@ USE_ANTHROPIC = os.getenv("ANTHROPIC_API_KEY") is not None
 
 if USE_OLLAMA:
     import requests
-    OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+    OLLAMA_API_URL = "http://127.0.0.1:11434/api/chat"
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma2:9b")
 elif USE_OPENAI:
     import openai
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -229,7 +229,9 @@ def generate_script_with_ollama(account_name):
                 OLLAMA_API_URL,
                 json={
                     "model": OLLAMA_MODEL,
-                    "prompt": prompt,
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
                     "stream": False,
                     "options": {
                         "temperature": temp,
@@ -238,11 +240,11 @@ def generate_script_with_ollama(account_name):
                         "repeat_penalty": 1.2  # 繰り返しを減らす
                     }
                 },
-                timeout=90
+                timeout=300  # 5分に延長（初回モデルロード対応）
             )
             response.raise_for_status()
             result = response.json()
-            script = result.get("response", "").strip()
+            script = result.get("message", {}).get("content", "").strip()
             
             if not script:
                 raise ValueError("Ollama returned empty response")
@@ -415,22 +417,17 @@ def generate_script_fallback(account_name):
 
 def generate_script(account_name):
     """台本を生成（利用可能なAPIを自動選択）"""
-    try:
-        if USE_OLLAMA:
-            print(f"🦙 Ollama ({OLLAMA_MODEL}) で {account_name} の台本を生成中...")
-            return generate_script_with_ollama(account_name)
-        elif USE_OPENAI:
-            print(f"🤖 OpenAI GPT-4 で {account_name} の台本を生成中...")
-            return generate_script_with_openai(account_name)
-        elif USE_ANTHROPIC:
-            print(f"🤖 Claude で {account_name} の台本を生成中...")
-            return generate_script_with_anthropic(account_name)
-        else:
-            print(f"⚠️ AI未設定。テンプレートから {account_name} の台本を選択...")
-            return generate_script_fallback(account_name)
-    except Exception as e:
-        print(f"❌ エラー: {e}")
-        print(f"⚠️ フォールバックテンプレートを使用...")
+    if USE_OLLAMA:
+        print(f"🦙 Ollama ({OLLAMA_MODEL}) で {account_name} の台本を生成中...")
+        return generate_script_with_ollama(account_name)
+    elif USE_OPENAI:
+        print(f"🤖 OpenAI GPT-4 で {account_name} の台本を生成中...")
+        return generate_script_with_openai(account_name)
+    elif USE_ANTHROPIC:
+        print(f"🤖 Claude で {account_name} の台本を生成中...")
+        return generate_script_with_anthropic(account_name)
+    else:
+        print(f"⚠️ AI未設定。テンプレートから {account_name} の台本を選択...")
         return generate_script_fallback(account_name)
 
 

@@ -7,8 +7,16 @@
 import os
 import sys
 import json
+import subprocess
+import time
+import requests
 from datetime import datetime
 from pathlib import Path
+
+# 環境変数設定（generate_script.pyより先に設定）
+if "OLLAMA_MODEL" not in os.environ:
+    os.environ["OLLAMA_MODEL"] = "gemma2:9b"
+
 from generate_script import generate_all_scripts
 from create_movie import generate_voice, create_video_with_keywords
 from config import (
@@ -30,6 +38,110 @@ from db_manager import init_database, add_video
 # ディレクトリ初期化
 init_directories()
 init_database()
+
+
+def check_and_start_services():
+    """必要なサービスが起動しているか確認し、停止していれば起動する"""
+    print("\n🔍 サービス起動状態を確認中...")
+    
+    services_ok = True
+    
+    # 1. Ollama確認
+    print("   📡 Ollama接続確認...")
+    try:
+        response = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
+        if response.status_code == 200:
+            print("   ✅ Ollama: 起動中")
+        else:
+            print("   ⚠️ Ollama: 応答異常")
+            services_ok = False
+    except requests.exceptions.ConnectionError:
+        print("   ❌ Ollama: 停止中 → 起動します...")
+        try:
+            subprocess.Popen(
+                ["nohup", "ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None
+            )
+            print("   ⏳ Ollama起動中... (5秒待機)")
+            time.sleep(5)
+            # 起動確認
+            try:
+                response = requests.get("http://127.0.0.1:11434/api/tags", timeout=10)
+                if response.status_code == 200:
+                    print("   ✅ Ollama: 起動成功")
+                else:
+                    print("   ⚠️ Ollama: 起動したが応答異常")
+                    services_ok = False
+            except:
+                print("   ❌ Ollama: 起動失敗")
+                services_ok = False
+        except Exception as e:
+            print(f"   ❌ Ollama起動エラー: {e}")
+            services_ok = False
+    except Exception as e:
+        print(f"   ❌ Ollama確認エラー: {e}")
+        services_ok = False
+    
+    # 2. VOICEVOX確認
+    print("   🎤 VOICEVOX接続確認...")
+    try:
+        response = requests.get("http://127.0.0.1:50021/speakers", timeout=5)
+        if response.status_code == 200:
+            print("   ✅ VOICEVOX: 起動中")
+        else:
+            print("   ⚠️ VOICEVOX: 応答異常")
+            services_ok = False
+    except requests.exceptions.ConnectionError:
+        print("   ❌ VOICEVOX: 停止中 → 起動します...")
+        try:
+            # VOICEVOXコンテナを起動（Dockerサービスが起動している前提）
+            result = subprocess.run(
+                ["docker", "start", "voicevox"],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                print("   ⏳ VOICEVOX起動中... (10秒待機)")
+                time.sleep(10)
+                # 起動確認
+                try:
+                    response = requests.get("http://127.0.0.1:50021/speakers", timeout=15)
+                    if response.status_code == 200:
+                        print("   ✅ VOICEVOX: 起動成功")
+                    else:
+                        print("   ⚠️ VOICEVOX: 起動したが応答異常")
+                        services_ok = False
+                except:
+                    print("   ❌ VOICEVOX: 起動失敗（タイムアウトまたは接続エラー）")
+                    services_ok = False
+            elif "Cannot connect to the Docker daemon" in result.stderr:
+                print("   ⚠️ Dockerサービスが起動していません")
+                print("   💡 以下のコマンドを手動で実行してください:")
+                print("      sudo service docker start")
+                print("      docker start voicevox")
+                services_ok = False
+            else:
+                print(f"   ❌ VOICEVOXコンテナ起動失敗: {result.stderr.strip()}")
+                services_ok = False
+        except Exception as e:
+            print(f"   ❌ VOICEVOX起動エラー: {e}")
+            services_ok = False
+    except Exception as e:
+        print(f"   ❌ VOICEVOX確認エラー: {e}")
+        services_ok = False
+    
+    if not services_ok:
+        print("\n⚠️ 一部のサービスが正常に起動していません")
+        print("   手動で確認してください:")
+        print("   - Ollama: ollama serve")
+        print("   - VOICEVOX: docker start voicevox")
+        return False
+    
+    print("\n✅ すべてのサービスが正常に起動しています\n")
+    return True
 
 def log_message(message):
     """ログ出力とファイル保存"""
@@ -132,6 +244,11 @@ def generate_daily_videos():
         log_message("="*60)
         log_message("🚀 日次動画生成バッチ開始")
         log_message("="*60)
+        
+        # Step 0: サービス起動確認・自動起動
+        if not check_and_start_services():
+            log_message("\n❌ サービス起動に失敗しました")
+            return 1
         
         # Step 1: AI台本生成
         log_message("\n📝 Step 1: AI台本生成")
