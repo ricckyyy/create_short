@@ -84,12 +84,28 @@ def check_and_start_services():
         print(f"   ❌ Ollama確認エラー: {e}")
         services_ok = False
     
-    # 2. VOICEVOX確認
+    # 2. VOICEVOX確認と再起動（パフォーマンス改善）
     print("   🎤 VOICEVOX接続確認...")
     try:
-        response = requests.get("http://127.0.0.1:50021/speakers", timeout=5)
+        response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
         if response.status_code == 200:
             print("   ✅ VOICEVOX: 起動中")
+            # 性能向上のため、毎回再起動
+            print("   🔄 VOICEVOX再起動中（パフォーマンス最適化）...")
+            subprocess.run(["docker", "restart", "voicevox"], capture_output=True, text=True)
+            print("   ⏳ VOICEVOX再起動待機... (15秒)")
+            time.sleep(15)
+            # 再起動後の確認
+            try:
+                response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
+                if response.status_code == 200:
+                    print("   ✅ VOICEVOX: 再起動完了")
+                else:
+                    print("   ⚠️ VOICEVOX: 再起動後の応答異常")
+                    services_ok = False
+            except:
+                print("   ❌ VOICEVOX: 再起動後の接続失敗")
+                services_ok = False
         else:
             print("   ⚠️ VOICEVOX: 応答異常")
             services_ok = False
@@ -104,11 +120,11 @@ def check_and_start_services():
             )
             
             if result.returncode == 0:
-                print("   ⏳ VOICEVOX起動中... (10秒待機)")
-                time.sleep(10)
+                print("   ⏳ VOICEVOX起動中... (15秒待機)")
+                time.sleep(15)
                 # 起動確認
                 try:
-                    response = requests.get("http://127.0.0.1:50021/speakers", timeout=15)
+                    response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
                     if response.status_code == 200:
                         print("   ✅ VOICEVOX: 起動成功")
                     else:

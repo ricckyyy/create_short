@@ -76,7 +76,11 @@ ACCOUNT_PROMPTS = {
 - サプライズ要素を入れる
 
 【フォーマット】
-各行を\\nで区切ったテキストのみを出力してください。説明は不要です。
+各行を\nで区切ったテキストのみを出力してください。説明は不要です。
+
+【重要な禁止事項】
+- 絵文字は一切使用しない（❤️、😊、🎉などすべて禁止）
+- 日本語と句読点のみ使用
 
 例）
 あなたの本当の性格、当てられます
@@ -108,7 +112,11 @@ ACCOUNT_PROMPTS = {
 - リアリティのある描写
 
 【フォーマット】
-各行を\\nで区切ったテキストのみを出力してください。説明は不要です。
+各行を\nで区切ったテキストのみを出力してください。説明は不要です。
+
+【重要な禁止事項】
+- 絵文字は一切使用しない（👻、😱、🌙などすべて禁止）
+- 日本語と句読点のみ使用
 
 例）
 これは5年前、私が体験した話です
@@ -121,18 +129,24 @@ ACCOUNT_PROMPTS = {
     },
     
     "映画紹介": {
-        "system": "あなたは映画紹介の専門家です。TikTok/YouTube Shorts向けの短い映画紹介を作成してください。",
+        "system": "あなたは映画紹介の専門家です。TikTok/YouTube Shorts向けの短い映画紹介を作成してください。【絶対厳守】絵文字は一切使用禁止です。日本語のテキストと句読点のみを使用してください。",
         "prompt": """
 Netflix、Amazon Prime Video、Disney+などで観られる映画を1つ紹介してください。
 毎回違う映画を選んでください。
 
+【絶対に守ること】
+- 絵文字は一切使用しない（🎬🎥⭐😳🤯🤔などすべて禁止）
+- 日本語のテキストと句読点のみ使用
+- 記号は「」『』！？のみ許可
+
+【内容の要件】
 - 実在する有名な映画を選ぶ
 - 映画の魅力を短く紹介
 - ネタバレなし
 - 視聴者を引き込む内容
 - 自然な日本語で
 
-例:
+【正しい例】※絵文字なし
 『インセプション』この映画ヤバい
 夢の中に侵入する泥棒の物語
 現実と夢の境界が曖昧になる
@@ -140,6 +154,8 @@ Netflix、Amazon Prime Video、Disney+などで観られる映画を1つ紹介�
 何度観ても新発見がある
 ディカプリオ最高傑作
 今すぐNetflixで観れるよ
+
+【重要】上記の例のように、絵文字を一切使わずテキストのみで書いてください。
 
 それでは、別の映画を紹介してください:
 """,
@@ -208,6 +224,7 @@ def generate_script_with_ollama(account_name):
 5. 「台本:」などの余計な文字は書かない
 6. 例や説明は一切不要
 7. 回答は台本のみ
+8. 絵文字は絶対に使用しない
 
 それでは、{account_name}向けの台本を書いてください:"""
     
@@ -222,8 +239,8 @@ def generate_script_with_ollama(account_name):
                 time.sleep(wait_time)
             
             print(f"   📡 Ollama API接続中... (試行 {attempt + 1}/{max_retries})")
-            # 映画紹介の場合はtemperatureを高めに設定して多様性を向上
-            temp = 0.9 if account_name == "映画紹介" else 0.7
+            # 映画紹介も0.7に統一（temperatureが高すぎると指示を無視しやすい）
+            temp = 0.7
             
             response = requests.post(
                 OLLAMA_API_URL,
@@ -250,6 +267,24 @@ def generate_script_with_ollama(account_name):
                 raise ValueError("Ollama returned empty response")
             
             print(f"   ✅ Ollama応答受信 ({len(script)}文字)")
+            
+            # 絵文字を除去（特に映画紹介で頻発するため）
+            import re
+            # Unicode絵文字の範囲を全てマッチ
+            emoji_pattern = re.compile(
+                "["
+                "\U0001F600-\U0001F64F"  # 顔文字
+                "\U0001F300-\U0001F5FF"  # 記号とピクトグラム
+                "\U0001F680-\U0001F6FF"  # 交通と地図記号
+                "\U0001F1E0-\U0001F1FF"  # 旗
+                "\U00002702-\U000027B0"  # その他の記号
+                "\U000024C2-\U0001F251"
+                "]+", flags=re.UNICODE
+            )
+            original_length = len(script)
+            script = emoji_pattern.sub('', script)
+            if len(script) < original_length:
+                print(f"   🚫 絵文字を除去しました ({original_length - len(script)}文字削除)")
             
             # デバッグ: 生成された内容を表示
             if os.getenv("DEBUG_SCRIPT"):

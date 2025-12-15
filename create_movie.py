@@ -92,7 +92,7 @@ def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, 
         # audio_query
         print(f"   ステップ1: audio_query生成中...")
         url_query = f"{VOICEVOX_API}/audio_query"
-        res = requests.post(url_query, params={"text": text, "speaker": style_id}, timeout=10)
+        res = requests.post(url_query, params={"text": text, "speaker": style_id}, timeout=60)
         res.raise_for_status()
         audio_query = res.json()
         print(f"   ✅ audio_query生成完了")

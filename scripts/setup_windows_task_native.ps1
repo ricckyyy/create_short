@@ -1,19 +1,18 @@
-﻿# Windows ネイティブ タスクスケジューラ 自動設定スクリプト
-# WSLを使わず、Windowsネイティブ環境で直接Python実行
+﻿# Windows タスクスケジューラ 自動設定スクリプト（WSL版）
+# WSL環境でPythonを実行
 # 管理者権限のPowerShellで実行してください
 
 Write-Host "================================" -ForegroundColor Cyan
-Write-Host "TikTok動画生成 タスクスケジューラ設定 (Windowsネイティブ版)" -ForegroundColor Cyan
+Write-Host "TikTok動画生成 タスクスケジューラ設定 (WSL版)" -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
 
 # プロジェクトパスの設定（環境に合わせて変更してください）
 $ProjectPath = "G:\dev\create_short"
-$PythonExe = "python"  # Pythonがパスに通っている場合
-# $PythonExe = "C:\Users\rt\AppData\Local\Programs\Python\Python312\python.exe"  # 絶対パス指定も可能
+$WSLProjectPath = "/mnt/g/dev/create_short"
 
 # タスク名
-$TaskName = "TikTok_VideoGeneration_Native"
+$TaskName = "TikTok_VideoGeneration_WSL"
 
 # プロジェクトパスの存在確認
 if (-not (Test-Path $ProjectPath)) {
@@ -22,13 +21,20 @@ if (-not (Test-Path $ProjectPath)) {
     exit 1
 }
 
-# Python実行確認
+# WSL実行確認
 try {
-    $pythonVersion = & $PythonExe --version 2>&1
+    $wslCheck = wsl bash -c "echo OK" 2>&1
+    if ($wslCheck -ne "OK") {
+        throw "WSL起動失敗"
+    }
+    Write-Host "WSL検出: OK" -ForegroundColor Green
+    
+    # Python確認
+    $pythonVersion = wsl bash -c "python3 --version" 2>&1
     Write-Host "Python検出: $pythonVersion" -ForegroundColor Green
 } catch {
-    Write-Host "エラー: Pythonが見つかりません" -ForegroundColor Red
-    Write-Host "スクリプト内の `$PythonExe を正しいパスに変更してください" -ForegroundColor Yellow
+    Write-Host "エラー: WSLが正しく動作していません" -ForegroundColor Red
+    Write-Host "WSL2がインストールされているか確認してください" -ForegroundColor Yellow
     exit 1
 }
 
@@ -50,11 +56,11 @@ if (-not (Test-Path $LogDir)) {
 $LogFile = Join-Path $LogDir "cron_output.log"
 
 # タスクアクション（実行するコマンド）
-# Windowsネイティブ環境でPythonを直接実行
+# WSL経由でPythonを実行
 # 出力をログファイルにリダイレクト
 $action = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"cd '$ProjectPath'; & '$PythonExe' daily_generation.py 2>&1 | Tee-Object -FilePath '$LogFile' -Append`"" `
+    -Execute "wsl" `
+    -Argument "bash -c `"cd $WSLProjectPath && python3 daily_generation.py 2>&1 | tee -a $WSLProjectPath/data/logs/cron/cron_output.log`"" `
     -WorkingDirectory $ProjectPath
 
 # トリガー（実行タイミング）
@@ -84,7 +90,7 @@ try {
         -Trigger $trigger `
         -Settings $settings `
         -Principal $principal `
-        -Description "TikTok/YouTube Shorts用動画を毎日自動生成（Windowsネイティブ版、画面ロック時も実行）" | Out-Null
+        -Description "TikTok/YouTube Shorts用動画を毎日自動生成（WSL版、画面ロック時も実行）" | Out-Null
     
     Write-Host ""
     Write-Host "✅ タスクスケジューラ設定完了！" -ForegroundColor Green
@@ -103,8 +109,9 @@ Write-Host ""
 Write-Host "【設定内容】" -ForegroundColor Cyan
 Write-Host "タスク名      : $TaskName"
 Write-Host "実行時刻      : 毎日 6:00 AM"
-Write-Host "実行方法      : PowerShell経由でPython実行"
+Write-Host "実行方法      : WSL bash経由でPython実行"
 Write-Host "作業ディレクトリ: $ProjectPath"
+Write-Host "WSLパス       : $WSLProjectPath"
 Write-Host "ログファイル  : $LogFile"
 Write-Host "特権レベル    : 最上位（管理者権限）"
 Write-Host "ログオンタイプ: パスワード保存（画面ロック時も実行）"
@@ -120,8 +127,7 @@ Write-Host "3. 右クリック → 「実行する」でテスト可能"
 Write-Host "4. 条件タブで「タスクを実行するためにスリープを解除する」にチェックが入っていることを確認"
 Write-Host ""
 Write-Host "【手動実行テスト】" -ForegroundColor Cyan
-Write-Host "cd $ProjectPath"
-Write-Host "$PythonExe daily_generation.py"
+Write-Host "wsl bash -c `"cd $WSLProjectPath && python3 daily_generation.py`""
 Write-Host ""
 
 # オプション: テスト実行を提案
@@ -129,8 +135,7 @@ $testRun = Read-Host "今すぐテスト実行しますか？ (y/N)"
 if ($testRun -eq "y" -or $testRun -eq "Y") {
     Write-Host ""
     Write-Host "テスト実行中..." -ForegroundColor Yellow
-    Set-Location $ProjectPath
-    & $PythonExe daily_generation.py
+    wsl bash -c "cd $WSLProjectPath && python3 daily_generation.py"
     Write-Host ""
     Write-Host "テスト実行完了" -ForegroundColor Green
 }
