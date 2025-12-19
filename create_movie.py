@@ -153,7 +153,7 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             
             print(f"     📦 {len(vs)}件の候補から選択中...")
             
-            # ランダムに1つ選択して多様性を確保
+            # Randomly select one video to ensure diversity
             selected_video = random.choice(vs)
             
             if selected_video.get("video_files"):
