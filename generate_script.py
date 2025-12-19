@@ -58,106 +58,87 @@ elif USE_ANTHROPIC:
 # 各アカウントのプロンプトテンプレート
 ACCOUNT_PROMPTS = {
     "心理テストラボ": {
-        "system": "あなたはTikTok/YouTube Shorts向けの心理テストコンテンツを作成するプロフェッショナルです。",
+        "system": "あなたは心理テスト台本作成のプロフェッショナルです。絵文字は一切使用禁止です。日本語のテキストのみで台本を書いてください。",
         "prompt": """
-視聴維持率を最大化する心理テスト動画の台本を作成してください。
-
-【要件】
-- 10行（各行が1シーン）
-- 冒頭2行で強烈なフックを作る
-- 選択肢を提示（例: ①②③）
-- 結果を小出しにして引き延ばす
-- 最後にCTA（フォロー促進）
-- エンゲージメント重視（コメント誘導）
-
-【トーン】
-- フレンドリー
-- 共感を誘う
-- サプライズ要素を入れる
-
-【フォーマット】
-各行を\nで区切ったテキストのみを出力してください。説明は不要です。
-
-【重要な禁止事項】
-- 絵文字は一切使用しない（❤️、😊、🎉などすべて禁止）
+【絶対厳守】
+- 絵文字は一切使用しない
 - 日本語と句読点のみ使用
+- 各行は短く、1行1文で必ず改行する
+- 長い文章を1行にまとめない
 
-例）
-あなたの本当の性格、当てられます
-1つだけ質問させてください
-朝起きて最初に見るものは何ですか？
-...（続く）
+心理テスト動画の台本を7-10行で作成してください。
 
-台本:
+出力例:
+これ当たりすぎてヤバい
+質問は1つだけ
+今すぐ食べたいものは何ですか
+①甘いもの
+②辛いもの
+③しょっぱいもの
+これであなたの本当の性格が分かります
+①を選んだあなたは寂しがり屋
+②は情熱的で行動派タイプ
+③を選んだ人、コメントで教えてください
+フォローで毎日診断配信中
+
+上記の例のように、1行1文で改行し、絵文字を使わず日本語のみで、別の心理テストの台本を作成してください。
+記号や装飾は不要です。台本の内容だけを出力してください。
 """,
         "keywords": ["psychology test", "personality", "quiz", "thinking", "brain", "mind", "decision making", "self discovery", "human nature", "character analysis"]
     },
     
     "闇夜の語り部": {
-        "system": "あなたはTikTok/YouTube Shorts向けのホラーストーリーを作成するプロフェッショナルです。",
+        "system": "あなたは怖い話の台本作成のプロフェッショナルです。絵文字は一切使用禁止です。日本語のテキストのみで台本を書いてください。",
         "prompt": """
-視聴維持率を最大化する怖い話動画の台本を作成してください。
-
-【要件】
-- 10行（各行が1シーン）
-- 冒頭2行で不気味な雰囲気を作る
-- 実体験風のリアリティ
-- 徐々に恐怖を高めていく
-- クリフハンガー（続きが気になる終わり方）
-- 最後にエンゲージメント誘導
-
-【トーン】
-- シリアス
-- 不穏な雰囲気
-- リアリティのある描写
-
-【フォーマット】
-各行を\nで区切ったテキストのみを出力してください。説明は不要です。
-
-【重要な禁止事項】
-- 絵文字は一切使用しない（👻、😱、🌙などすべて禁止）
+【絶対厳守】
+- 絵文字は一切使用しない
 - 日本語と句読点のみ使用
+- 各行は短く、1行1文で必ず改行する
+- 長い文章を1行にまとめない
 
-例）
-これは5年前、私が体験した話です
+怖い話動画の台本を7-10行で作成してください。
+
+出力例:
+これは3年前、私が体験した話です
 深夜2時、帰宅途中の住宅街で
-...（続く）
+突然、後ろから足音が聞こえた
+振り返っても誰もいない
+また歩き出すと、また足音
+さっきより近づいている
+恐怖で走り出した私は
+角を曲がった瞬間、目の前に
+あれが立っていた
+続きが気になる人はフォロー
 
-台本:
+上記の例のように、1行1文で改行し、絵文字を使わず日本語のみで、別の怖い話の台本を作成してください。
+記号や装飾は不要です。台本の内容だけを出力してください。
 """,
         "keywords": ["dark night", "horror story", "mysterious", "scary", "urban legend", "supernatural", "suspense", "true horror", "nightmare", "paranormal"]
     },
     
     "映画紹介": {
-        "system": "あなたは映画紹介の専門家です。TikTok/YouTube Shorts向けの短い映画紹介を作成してください。【絶対厳守】絵文字は一切使用禁止です。日本語のテキストと句読点のみを使用してください。",
+        "system": "あなたは映画紹介の専門家です。絵文字は一切使用禁止です。日本語のテキストのみで台本を書いてください。",
         "prompt": """
-Netflix、Amazon Prime Video、Disney+などで観られる映画を1つ紹介してください。
-毎回違う映画を選んでください。
+【絶対厳守】
+- 絵文字は一切使用しない
+- 日本語と句読点のみ使用
+- 各行は短く、1行1文で必ず改行する
+- 長い文章を1行にまとめない
 
-【絶対に守ること】
-- 絵文字は一切使用しない（🎬🎥⭐😳🤯🤔などすべて禁止）
-- 日本語のテキストと句読点のみ使用
-- 記号は「」『』！？のみ許可
+Netflix、Prime Video、Disney+などで観られる映画を1つ紹介する台本を7-10行で作成してください。
 
-【内容の要件】
-- 実在する有名な映画を選ぶ
-- 映画の魅力を短く紹介
-- ネタバレなし
-- 視聴者を引き込む内容
-- 自然な日本語で
-
-【正しい例】※絵文字なし
+出力例:
 『インセプション』この映画ヤバい
 夢の中に侵入する泥棒の物語
 現実と夢の境界が曖昧になる
-ラストのコマは回ってる？
+ラストのコマは回ってる
 何度観ても新発見がある
 ディカプリオ最高傑作
+観たらコメントで感想教えて
 今すぐNetflixで観れるよ
 
-【重要】上記の例のように、絵文字を一切使わずテキストのみで書いてください。
-
-それでは、別の映画を紹介してください:
+上記の例のように、1行1文で改行し、絵文字を使わず日本語のみで、別の映画の紹介台本を作成してください。
+記号や装飾は不要です。台本の内容だけを出力してください。
 """,
         "keywords": ["mystery movie", "plot twist", "cinema", "thriller", "suspense film", "movie review", "spoiler free", "must watch", "hidden gem", "masterpiece"]
     }
@@ -268,23 +249,23 @@ def generate_script_with_ollama(account_name):
             
             print(f"   ✅ Ollama応答受信 ({len(script)}文字)")
             
-            # 絵文字を除去（特に映画紹介で頻発するため）
-            import re
-            # Unicode絵文字の範囲を全てマッチ
-            emoji_pattern = re.compile(
-                "["
-                "\U0001F600-\U0001F64F"  # 顔文字
-                "\U0001F300-\U0001F5FF"  # 記号とピクトグラム
-                "\U0001F680-\U0001F6FF"  # 交通と地図記号
-                "\U0001F1E0-\U0001F1FF"  # 旗
-                "\U00002702-\U000027B0"  # その他の記号
-                "\U000024C2-\U0001F251"
-                "]+", flags=re.UNICODE
-            )
-            original_length = len(script)
-            script = emoji_pattern.sub('', script)
-            if len(script) < original_length:
-                print(f"   🚫 絵文字を除去しました ({original_length - len(script)}文字削除)")
+            # # 絵文字を除去（特に映画紹介で頻発するため）
+            # import re
+            # # Unicode絵文字の範囲を全てマッチ
+            # emoji_pattern = re.compile(
+            #     "["
+            #     "\U0001F600-\U0001F64F"  # 顔文字
+            #     "\U0001F300-\U0001F5FF"  # 記号とピクトグラム
+            #     "\U0001F680-\U0001F6FF"  # 交通と地図記号
+            #     "\U0001F1E0-\U0001F1FF"  # 旗
+            #     "\U00002702-\U000027B0"  # その他の記号
+            #     "\U000024C2-\U0001F251"
+            #     "]+", flags=re.UNICODE
+            # )
+            # original_length = len(script)
+            # script = emoji_pattern.sub('', script)
+            # if len(script) < original_length:
+            #     print(f"   🚫 絵文字を除去しました ({original_length - len(script)}文字削除)")
             
             # デバッグ: 生成された内容を表示
             if os.getenv("DEBUG_SCRIPT"):
@@ -355,16 +336,20 @@ def generate_script_with_ollama(account_name):
             if len(lines) > max_lines:
                 lines = lines[:max_lines]
                 print(f"   ✂️ {max_lines}行にトリミング")
-            elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライ
+            elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライまたはエラー
+                # 生成された台本内容をログ出力
+                print(f"   📝 生成された内容:")
+                for i, line in enumerate(lines, 1):
+                    print(f"      {i}. {line[:100]}")  # 最初の100文字まで表示
+                
                 if attempt < max_retries - 1:
                     print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
                     raise ValueError(f"Generated only {len(lines)} valid lines (minimum 5)")
                 else:
-                    # 最終試行では補完して続行
-                    print(f"   ⚠️ {len(lines)}行のみ。不足分を補完します...")
-                    while len(lines) < 5:
-                        lines.append("フォローで毎日更新中")
-            # 5～10行はそのまま使用（補完しない）
+                    # 最終試行でも5行未満の場合はエラーで終了（補完しない）
+                    print(f"   ❌ 最終試行でも{len(lines)}行のみ。台本生成失敗。")
+                    raise ValueError(f"❌ 台本生成失敗: {len(lines)}行しか生成できませんでした（最低5行必要）")
+            # 5～10行はそのまま使用
             
             print(f"   ✅ 最終: {len(lines)}行")
             return '\n'.join(lines)
@@ -624,36 +609,47 @@ def generate_all_scripts(timestamp=None):
         print(f"🎬 {account_name}")
         print('='*50)
         
-        script = generate_script(account_name)
-        
-        # 台本の内容から動的にキーワードを生成
-        keywords = generate_keywords_from_script(script, account_name)
-        
-        account_config = ACCOUNTS[account_name]
-        
-        account_data = {
-            "name": account_name,
-            "script": script,
-            "keywords": keywords,
-            "slug": account_config["slug"]
-        }
-        
-        accounts_data.append(account_data)
-        
-        # 履歴保存
-        save_script_history(account_name, script)
-        
-        print(f"\n📄 生成された台本:")
-        print("-" * 50)
-        print(script)
-        print("-" * 50)
+        try:
+            script = generate_script(account_name)
+            
+            # 台本の内容から動的にキーワードを生成
+            keywords = generate_keywords_from_script(script, account_name)
+            
+            account_config = ACCOUNTS[account_name]
+            
+            account_data = {
+                "name": account_name,
+                "script": script,
+                "keywords": keywords,
+                "slug": account_config["slug"]
+            }
+            
+            accounts_data.append(account_data)
+            
+            # 履歴保存
+            save_script_history(account_name, script)
+            
+            print(f"\n📄 生成された台本:")
+            print("-" * 50)
+            print(script)
+            print("-" * 50)
+            
+        except Exception as e:
+            print(f"\n❌ {account_name} の台本生成に失敗しました: {e}")
+            print(f"   → 次のアカウントに進みます")
+            continue
+    
+    # 1つもアカウントの台本が生成できなかった場合はエラー
+    if len(accounts_data) == 0:
+        raise Exception("❌ 全てのアカウントで台本生成に失敗しました")
     
     # JSON形式で保存（スクリプト履歴ディレクトリに、タイムスタンプ付き）
     output_file = SCRIPTS_HISTORY_DIR / f"scripts_{date_str}_{timestamp}.json"
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(accounts_data, f, ensure_ascii=False, indent=2)
     
-    print(f"\n✅ 全台本を生成完了: {output_file}")
+    print(f"\n✅ 台本生成完了: {len(accounts_data)}/{len(ACCOUNTS)}アカウント成功")
+    print(f"📁 保存先: {output_file}")
     return accounts_data
 
 
