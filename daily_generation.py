@@ -46,7 +46,7 @@ def check_and_start_services():
     
     services_ok = True
     
-    # 1. Ollama確認
+    # 1. Ollama check
     print("   📡 Ollama接続確認...")
     try:
         response = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
@@ -84,7 +84,7 @@ def check_and_start_services():
         print(f"   ❌ Ollama確認エラー: {e}")
         services_ok = False
     
-    # 2. VOICEVOX確認
+    # 2. VOICEVOX check
     print("   🎤 VOICEVOX接続確認...")
     try:
         response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
@@ -96,7 +96,7 @@ def check_and_start_services():
     except requests.exceptions.ConnectionError:
         print("   ❌ VOICEVOX: 停止中 → 起動します...")
         try:
-            # VOICEVOXコンテナを起動（Dockerサービスが起動している前提）
+            # Start VOICEVOX container (assuming Docker service is running)
             result = subprocess.run(
                 ["docker", "start", "voicevox"],
                 capture_output=True,
