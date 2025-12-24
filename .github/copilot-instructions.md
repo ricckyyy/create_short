@@ -1,5 +1,12 @@
 # AI Coding Agent Instructions
 
+## Language Requirements
+**IMPORTANT: All pull request titles and descriptions MUST be written in Japanese.**
+- Use the PR template at `.github/pull_request_template.md` which is in Japanese
+- Write all PR content (title, description, checklist items) in Japanese
+- Code comments and documentation should also be in Japanese when possible
+- This is critical for team communication and consistency
+
 ## Project Overview
 This is a **TikTok/YouTube Shorts video automation pipeline** that generates short-form vertical videos (720x1280) with narration, subtitles, and stock footage for three content accounts:
 1. **心理テストラボ** (Psychology Tests) - personality/psychology quizzes
