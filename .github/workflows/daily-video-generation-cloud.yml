@@ -1,0 +1,132 @@
+name: 毎日動画生成（クラウドランナー - 実験的）
+
+# このワークフローはGitHub-hostedランナーで実行するための実験的な設定です
+# VOICEVOX と Ollama をクラウド環境で起動するため、実行時間が長くなる可能性があります
+
+on:
+  # 手動実行のみ（テスト用）
+  workflow_dispatch:
+  # 自動実行を有効にする場合は以下のコメントを解除
+  # schedule:
+  #   - cron: '0 21 * * *'  # 毎日 UTC 21:00 (日本時間 6:00 AM)
+
+jobs:
+  generate-videos-cloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180 # 3時間のタイムアウト
+    
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+      
+      - name: Pythonのセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: 依存パッケージのインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 必要なディレクトリの作成
+        run: |
+          mkdir -p data/videos/draft
+          mkdir -p data/videos/published
+          mkdir -p data/audio
+          mkdir -p data/scripts/history
+          mkdir -p data/logs/generation
+          mkdir -p data/upload
+      
+      - name: Dockerのセットアップ
+        uses: docker/setup-buildx-action@v3
+      
+      - name: VOICEVOXの起動
+        run: |
+          echo "VOICEVOXコンテナを起動中..."
+          docker run -d --name voicevox \
+            -p 50021:50021 \
+            voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+          
+          echo "VOICEVOX起動待機（30秒）..."
+          sleep 30
+          
+          # 起動確認（最大10回リトライ）
+          for i in {1..10}; do
+            if curl -s http://127.0.0.1:50021/speakers > /dev/null 2>&1; then
+              echo "✅ VOICEVOX起動成功"
+              break
+            fi
+            echo "VOICEVOX起動待機中... ($i/10)"
+            sleep 10
+          done
+          
+          curl http://127.0.0.1:50021/speakers || (echo "❌ VOICEVOX起動失敗" && exit 1)
+      
+      - name: Ollamaのセットアップ
+        run: |
+          echo "Ollamaをインストール中..."
+          curl -fsSL https://ollama.com/install.sh | sh
+          
+          echo "Ollamaサービスを起動中..."
+          ollama serve > /tmp/ollama.log 2>&1 &
+          sleep 10
+          
+          # 起動確認
+          curl -s http://127.0.0.1:11434/api/tags > /dev/null 2>&1 || echo "⚠️ Ollama起動確認できませんでした（続行）"
+          
+          # モデルのプル（環境変数で指定されたモデル、またはデフォルト）
+          MODEL="${OLLAMA_MODEL:-gemma2:9b}"
+          echo "Ollamaモデル '$MODEL' をプル中..."
+          ollama pull "$MODEL" || echo "⚠️ モデルのプルに失敗しました（続行）"
+        env:
+          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
+      
+      - name: 動画生成スクリプトの実行
+        env:
+          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          echo "動画生成を開始します..."
+          python daily_generation.py || echo "⚠️ 一部の処理でエラーが発生しました"
+        continue-on-error: true
+      
+      - name: 生成された動画のアップロード
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-videos-cloud-${{ github.run_number }}
+          path: |
+            data/videos/draft/*.mp4
+            data/upload/descriptions_*.txt
+            data/logs/generation/*.log
+          retention-days: 7
+          if-no-files-found: warn
+      
+      - name: ログの出力
+        if: always()
+        run: |
+          echo "=== Ollama ログ ==="
+          if [ -f /tmp/ollama.log ]; then
+            tail -n 30 /tmp/ollama.log
+          fi
+          
+          echo ""
+          echo "=== 生成ログ ==="
+          if [ -f data/logs/generation/generation_$(date +%Y%m%d).log ]; then
+            tail -n 50 data/logs/generation/generation_$(date +%Y%m%d).log
+          else
+            echo "ログファイルが見つかりません"
+          fi
+      
+      - name: クリーンアップ
+        if: always()
+        run: |
+          echo "一時ファイルとコンテナのクリーンアップ..."
+          docker stop voicevox || true
+          docker rm voicevox || true
+          rm -f clip*.mp4 temp_*.mp4 || true
+          pkill -f "ollama serve" || true
+          echo "クリーンアップ完了"
