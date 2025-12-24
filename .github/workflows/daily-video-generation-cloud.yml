@@ -15,6 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180 # 3時間のタイムアウト
     
+    # 最小権限の原則に従って、必要な権限のみを付与
+    permissions:
+      contents: read      # リポジトリのコードを読み取り
+      actions: write      # Artifactsのアップロードに必要
+    
     steps:
       - name: リポジトリのチェックアウト
         uses: actions/checkout@v4
