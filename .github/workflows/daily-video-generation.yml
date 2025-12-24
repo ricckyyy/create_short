@@ -64,7 +64,7 @@ jobs:
         env:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          # PEXELS_API_KEY はオプション（config.py にハードコード済み）
         run: |
           python daily_generation.py
         continue-on-error: false

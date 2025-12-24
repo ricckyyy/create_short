@@ -87,11 +87,17 @@ jobs:
         env:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          # PEXELS_API_KEY はオプション（config.py にハードコード済み）
         run: |
           echo "動画生成を開始します..."
-          python daily_generation.py || echo "⚠️ 一部の処理でエラーが発生しました"
-        continue-on-error: true
+          python daily_generation.py
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ エラーコード: $EXIT_CODE"
+            echo "⚠️ 動画生成に失敗しました。ログを確認してください。"
+            exit $EXIT_CODE
+          fi
+          echo "✅ 動画生成が完了しました"
       
       - name: 生成された動画のアップロード
         uses: actions/upload-artifact@v4
