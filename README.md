@@ -140,10 +140,15 @@ python daily_generation.py
 # セットアップ方法は docs/GITHUB_ACTIONS_SETUP.md を参照
 ```
 
+**実行モード**:
+1. **毎日定時実行**: 毎日6:00 AMに自動生成
+2. **PR連動実行**: プルリクエストごとに動画生成（NEW! 🔥）
+
 **メリット**:
 - サーバー不要で自動実行
 - 実行履歴・ログが GitHub で確認可能
 - 生成した動画を自動でダウンロード可能
+- PRごとに自動生成・レビュー可能
 
 詳細: [GitHub Actions セットアップガイド](docs/GITHUB_ACTIONS_SETUP.md)
 

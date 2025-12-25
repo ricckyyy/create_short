@@ -1,0 +1,150 @@
+name: PR動画生成
+
+# このワークフローはPR作成・更新時に daily_generation.py を実行します
+# - セルフホストランナーを使用（VOICEVOX と Ollama が必要）
+# - 生成された動画は GitHub Artifacts に保存されます（7日間）
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'daily_generation.py'
+      - 'create_movie.py'
+      - 'generate_script.py'
+      - 'config.py'
+      - '.github/workflows/pr-video-generation.yml'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  generate-videos-on-pr:
+    runs-on: self-hosted # セルフホストランナーを使用
+    timeout-minutes: 120 # 2時間のタイムアウト
+    
+    # 最小権限の原則に従って、必要な権限のみを付与
+    permissions:
+      contents: read      # リポジトリのコードを読み取り
+      actions: write      # Artifactsのアップロードに必要
+      pull-requests: write # PRにコメントを投稿
+    
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+      
+      - name: Pythonのセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: 依存パッケージのインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install flask flask-cors requests moviepy pillow google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+      
+      - name: 必要なディレクトリの作成
+        run: |
+          mkdir -p data/videos/draft
+          mkdir -p data/videos/published
+          mkdir -p data/audio
+          mkdir -p data/scripts/history
+          mkdir -p data/logs/generation
+          mkdir -p data/upload
+      
+      - name: Ollamaサービスの起動確認
+        run: |
+          echo "Ollamaサービスの状態を確認中..."
+          if ! curl -s http://127.0.0.1:11434/api/tags > /dev/null 2>&1; then
+            echo "Ollamaが起動していません。起動を試みます..."
+            nohup ollama serve > /dev/null 2>&1 &
+            sleep 10
+          fi
+          curl http://127.0.0.1:11434/api/tags || echo "Ollama起動に失敗しました（続行します）"
+      
+      - name: VOICEVOXの起動確認
+        run: |
+          echo "VOICEVOXの状態を確認中..."
+          if ! curl -s http://127.0.0.1:50021/speakers > /dev/null 2>&1; then
+            echo "VOICEVOXが起動していません。Dockerコンテナを起動します..."
+            docker start voicevox || docker run -d --name voicevox -p 50021:50021 voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+            sleep 20
+          fi
+          curl http://127.0.0.1:50021/speakers || echo "VOICEVOX起動に失敗しました"
+      
+      - name: 動画生成スクリプトの実行
+        env:
+          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          # PEXELS_API_KEY はオプション（config.py にハードコード済み）
+        run: |
+          python daily_generation.py
+        continue-on-error: false
+      
+      - name: 生成された動画のアップロード
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-videos-pr-${{ github.event.pull_request.number }}-${{ github.run_number }}
+          path: |
+            data/videos/draft/*.mp4
+            data/upload/descriptions_*.txt
+            data/logs/generation/*.log
+          retention-days: 7
+      
+      - name: ログの出力
+        if: always()
+        run: |
+          echo "=== 最新の生成ログ ==="
+          if [ -f data/logs/generation/generation_$(date +%Y%m%d).log ]; then
+            tail -n 50 data/logs/generation/generation_$(date +%Y%m%d).log
+          else
+            echo "ログファイルが見つかりません"
+          fi
+      
+      - name: PRにコメントを投稿
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // 生成された動画ファイルを探す
+            const videosDir = 'data/videos/draft';
+            let videoFiles = [];
+            try {
+              if (fs.existsSync(videosDir)) {
+                videoFiles = fs.readdirSync(videosDir).filter(f => f.endsWith('.mp4'));
+              }
+            } catch (err) {
+              console.log('動画ディレクトリが見つかりません');
+            }
+            
+            const comment = `## 🎬 動画生成完了
+            
+            ✅ 動画生成が正常に完了しました！
+            
+            ### 生成された動画
+            ${videoFiles.length > 0 ? videoFiles.map(f => `- \`${f}\``).join('\n') : '⚠️ 動画ファイルが見つかりませんでした'}
+            
+            ### ダウンロード方法
+            1. この実行の [Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) セクションを確認
+            2. \`generated-videos-pr-${{ github.event.pull_request.number }}-${{ github.run_number }}\` をダウンロード
+            3. ZIPファイルを解凍して動画を確認
+            
+            ### 生成日時
+            ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+      
+      - name: クリーンアップ
+        if: always()
+        run: |
+          echo "一時ファイルのクリーンアップ..."
+          rm -f clip*.mp4 temp_*.mp4 || true
+          echo "クリーンアップ完了"
