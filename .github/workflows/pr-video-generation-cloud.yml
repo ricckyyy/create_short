@@ -18,7 +18,7 @@ on:
 jobs:
   generate-videos-on-pr-cloud:
     runs-on: ubuntu-latest
-    timeout-minutes: 180 # 3時間のタイムアウト
+    timeout-minutes: 90 # 1.5時間のタイムアウト（24時間動作防止）
     
     # 最小権限の原則に従って、必要な権限のみを付与
     permissions:
@@ -54,6 +54,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       
       - name: VOICEVOXの起動
+        timeout-minutes: 10
         run: |
           echo "VOICEVOXコンテナを起動中..."
           docker run -d --name voicevox \
@@ -76,6 +77,7 @@ jobs:
           curl http://127.0.0.1:50021/speakers || (echo "❌ VOICEVOX起動失敗" && exit 1)
       
       - name: Ollamaのセットアップ
+        timeout-minutes: 15
         run: |
           echo "Ollamaをインストール中..."
           curl -fsSL https://ollama.com/install.sh | sh
@@ -95,6 +97,7 @@ jobs:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
       
       - name: 動画生成スクリプトの実行
+        timeout-minutes: 60
         env:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}

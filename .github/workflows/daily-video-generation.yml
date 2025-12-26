@@ -14,7 +14,7 @@ on:
 jobs:
   generate-videos:
     runs-on: self-hosted # セルフホストランナーを使用
-    timeout-minutes: 120 # 2時間のタイムアウト
+    timeout-minutes: 60 # 1時間のタイムアウト（24時間動作防止）
     
     # 最小権限の原則に従って、必要な権限のみを付与
     permissions:
@@ -46,6 +46,7 @@ jobs:
           mkdir -p data/upload
       
       - name: Ollamaサービスの起動確認
+        timeout-minutes: 5
         run: |
           echo "Ollamaサービスの状態を確認中..."
           if ! curl -s http://127.0.0.1:11434/api/tags > /dev/null 2>&1; then
@@ -56,6 +57,7 @@ jobs:
           curl http://127.0.0.1:11434/api/tags || echo "Ollama起動に失敗しました（続行します）"
       
       - name: VOICEVOXの起動確認
+        timeout-minutes: 5
         run: |
           echo "VOICEVOXの状態を確認中..."
           if ! curl -s http://127.0.0.1:50021/speakers > /dev/null 2>&1; then
@@ -66,6 +68,7 @@ jobs:
           curl http://127.0.0.1:50021/speakers || echo "VOICEVOX起動に失敗しました"
       
       - name: 動画生成スクリプトの実行
+        timeout-minutes: 45
         env:
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
