@@ -1,0 +1,22 @@
+# TikTok/YouTube Shorts 動画生成ツール - 依存パッケージ
+
+# Web Framework
+flask>=3.1.2,<4.0.0
+flask-cors>=6.0.1,<7.0.0
+
+# HTTP Requests
+requests>=2.32.5,<3.0.0
+
+# Video Processing
+moviepy>=2.2.1,<3.0.0
+pillow<12
+
+# Google API (YouTube Upload)
+google-auth<2.42
+google-auth-oauthlib>=1.2.3,<2.0.0
+google-auth-httplib2>=0.2.1,<0.3.0
+google-api-python-client>=2.187.0,<3.0.0
+
+# Optional: AI Script Generation
+# openai>=1.0.0  # OpenAI API を使う場合
+# anthropic>=0.5.0  # Anthropic Claude API を使う場合

@@ -261,6 +261,13 @@ def generate_daily_videos():
         log_message("🚀 日次動画生成バッチ開始")
         log_message("="*60)
         
+        # 環境変数から対象アカウントを取得（指定がない場合は全アカウント）
+        target_account = os.environ.get("TARGET_ACCOUNT")
+        if target_account:
+            log_message(f"🎯 対象アカウント: {target_account}")
+        else:
+            log_message(f"🎯 対象アカウント: 全アカウント")
+        
         # Step 0: サービス起動確認・自動起動
         if not check_and_start_services():
             log_message("\n❌ サービス起動に失敗しました")
@@ -274,6 +281,13 @@ def generate_daily_videos():
         timestamp = datetime.now().strftime('%H%M%S')
         
         accounts_data = generate_all_scripts(timestamp)
+        
+        # 対象アカウントでフィルタリング
+        if target_account:
+            accounts_data = [acc for acc in accounts_data if acc["name"] == target_account]
+            if not accounts_data:
+                log_message(f"\n⚠️  指定されたアカウント '{target_account}' が見つかりません")
+                return 1
         
         # Step 2: 各アカウントの動画生成
         log_message("\n🎬 Step 2: 動画生成")

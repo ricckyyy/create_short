@@ -29,6 +29,7 @@ TikTok/YouTube Shorts向けの縦型動画（720x1280）を自動生成するWeb
   - 毎日異なるコンテンツを自動生成
 
 - **スケジュール実行**
+  - **GitHub Actions による自動実行**（NEW! ⭐）
   - cronによる定時自動実行
   - 完全無人運用が可能
   - 実行ログの自動記録
@@ -131,6 +132,25 @@ python daily_generation.py
 ```bash
 ./scripts/setup_cron.sh
 ```
+
+### GitHub Actions で自動実行（NEW! ⭐）
+毎日決まった時刻に自動で動画を生成できます：
+
+```bash
+# セットアップ方法は docs/GITHUB_ACTIONS_SETUP.md を参照
+```
+
+**実行モード**:
+1. **毎日定時実行**: 毎日6:00 AMに自動生成
+2. **PR連動実行**: プルリクエストごとに動画生成（NEW! 🔥）
+
+**メリット**:
+- サーバー不要で自動実行
+- 実行履歴・ログが GitHub で確認可能
+- 生成した動画を自動でダウンロード可能
+- PRごとに自動生成・レビュー可能
+
+詳細: [GitHub Actions セットアップガイド](docs/GITHUB_ACTIONS_SETUP.md)
 
 ### コマンドライン版（従来）
 ```bash
@@ -277,6 +297,7 @@ crontab -l
 - **[フォルダ構造](docs/FOLDER_STRUCTURE.md)** - プロジェクトのディレクトリ構成説明
 
 ### 🤖 自動化
+- **[GitHub Actions自動実行](docs/GITHUB_ACTIONS_SETUP.md)** - GitHub Actionsで毎日6時に自動生成（NEW! ⭐）
 - **[自動化ガイド](docs/AUTOMATION_GUIDE.md)** - cronによる毎日自動生成の設定方法
 - **[台本生成](docs/SCRIPT_GENERATION.md)** - AI台本生成機能の使い方（Ollama/OpenAI/Claude）
 - **[Windows自動化](docs/WINDOWS_TASK_SCHEDULER.md)** - Windowsタスクスケジューラでの自動実行
