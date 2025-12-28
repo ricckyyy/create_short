@@ -76,8 +76,21 @@ jobs:
           echo "Ollamaをインストール中..."
           curl -fsSL https://ollama.com/install.sh | sh
           
+          # 既存のOllamaプロセスを確認
+          if pgrep -f "ollama serve" > /dev/null; then
+            echo "既存のOllamaプロセスが検出されました。停止します..."
+            OLLAMA_PIDS=$(pgrep -f "ollama serve")
+            for pid in $OLLAMA_PIDS; do
+              echo "Stopping Ollama process $pid"
+              kill $pid 2>/dev/null || true
+            done
+            sleep 3
+          fi
+          
           echo "Ollamaサービスを起動中..."
           ollama serve > /tmp/ollama.log 2>&1 &
+          OLLAMA_PID=$!
+          echo $OLLAMA_PID > /tmp/ollama.pid
           sleep 10
           
           # 起動確認
@@ -142,5 +155,16 @@ jobs:
           docker stop voicevox || true
           docker rm voicevox || true
           rm -f clip*.mp4 temp_*.mp4 || true
-          pkill -f "ollama serve" || true
+          
+          # Ollamaプロセスを停止（プロセスIDファイルから）
+          if [ -f /tmp/ollama.pid ]; then
+            OLLAMA_PID=$(cat /tmp/ollama.pid)
+            if ps -p $OLLAMA_PID > /dev/null 2>&1; then
+              echo "Stopping Ollama process $OLLAMA_PID"
+              kill $OLLAMA_PID 2>/dev/null || true
+              sleep 2
+            fi
+            rm -f /tmp/ollama.pid
+          fi
+          
           echo "クリーンアップ完了"
