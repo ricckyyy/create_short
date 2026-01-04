@@ -187,8 +187,6 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 
 今回の心理テストで、あなたの隠れた性格が明らかに！
 結果をコメントで教えてください👇
-
-#心理テスト #性格診断 #Shorts
             """.strip(),
             "base_tags": [
                 "心理テスト", "性格診断", "心理学", "診断テスト",
@@ -202,8 +200,6 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 
 今宵も不気味な物語をお届けします...
 怖がりな方は、明るい場所でご視聴ください👻
-
-#怖い話 #都市伝説 #Shorts
             """.strip(),
             "base_tags": [
                 "怖い話", "都市伝説", "ホラー", "心霊",
@@ -217,8 +213,6 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 
 この映画、本当に面白いです！
 気になったら観てみてください🍿
-
-#映画紹介 #映画レビュー #Shorts
             """.strip(),
             "base_tags": [
                 "映画紹介", "映画レビュー", "映画", "おすすめ映画",
@@ -246,74 +240,130 @@ def generate_metadata(account_name: str, script: str = "") -> dict:
 def generate_tags_from_script(script: str, account_name: str, base_tags: list) -> list:
     """台本の内容から動的にタグを生成"""
     
-    if not script or not USE_OLLAMA:
-        # スクリプトがないか、Ollamaが使えない場合はベースタグを返す
+    if not script:
         return base_tags
     
     print(f"🏷️ 台本からタグを生成中...")
+    
+    additional_tags = []
     
     # 映画紹介の場合、映画タイトルを抽出
     if account_name == "映画紹介":
         movie_match = re.search(r'『([^』]+)』', script)
         if movie_match:
             movie_title = movie_match.group(1).strip()
-            additional_tags = []
             
             # 映画タイトルをそのまま追加
             additional_tags.append(movie_title)
             print(f"   ✅ 映画タイトルタグ追加: {movie_title}")
             
-            # 副題がある場合、メインタイトルだけも追加（スペース区切りの最初の部分）
-            # 例: 「パラサイト 半地下の家族」→「パラサイト」も追加
+            # 副題がある場合、メインタイトルだけも追加
             if ' ' in movie_title or '　' in movie_title:
                 main_title = movie_title.split()[0]
                 if main_title != movie_title and len(main_title) >= 2:
                     additional_tags.append(main_title)
                     print(f"   ✅ メインタイトルタグ追加: {main_title}")
-            
-            # AIで関連タグを生成
-            ai_tags = generate_tags_with_ai(script, account_name)
-            if ai_tags:
-                additional_tags.extend(ai_tags)
-            
-            # ベースタグ + 追加タグ（最大10個まで）
-            all_tags = base_tags + additional_tags
-            return list(dict.fromkeys(all_tags))[:10]  # 重複削除＆10個まで
     
-    # その他のアカウントもAIでタグ生成
-    ai_tags = generate_tags_with_ai(script, account_name)
-    if ai_tags:
-        all_tags = base_tags + ai_tags
-        return list(dict.fromkeys(all_tags))[:10]  # 重複削除＆10個まで
+    # キーワード抽出（ルールベース）
+    keyword_tags = extract_keywords_from_script(script, account_name)
+    if keyword_tags:
+        additional_tags.extend(keyword_tags)
+        print(f"   ✅ キーワード抽出: {', '.join(keyword_tags)}")
     
-    return base_tags
+    # AIで関連タグを生成（Ollamaが使える場合）
+    if USE_OLLAMA:
+        ai_tags = generate_tags_with_ai(script, account_name)
+        if ai_tags:
+            additional_tags.extend(ai_tags)
+    
+    # ベースタグ + 追加タグ（重複削除＆最大15個まで）
+    all_tags = base_tags + additional_tags
+    unique_tags = []
+    seen = set()
+    for tag in all_tags:
+        if tag.lower() not in seen:
+            unique_tags.append(tag)
+            seen.add(tag.lower())
+    
+    return unique_tags[:15]
+
+
+def extract_keywords_from_script(script: str, account_name: str) -> list:
+    """台本からルールベースでキーワードを抽出"""
+    
+    keywords = []
+    
+    # アカウント別のキーワード辞書
+    keyword_dict = {
+        "心理テストラボ": {
+            "当たる|当たり": "的中",
+            "性格|人格": "性格分析",
+            "恋愛": "恋愛診断",
+            "仕事|職業": "適職診断",
+            "相性": "相性診断",
+            "深層心理": "深層心理",
+            "隠れた|本当の": "本性",
+            "あなた": "自己分析",
+        },
+        "闇夜の語り部": {
+            "怪談": "怪談",
+            "心霊|幽霊|霊": "心霊現象",
+            "呪い": "呪い",
+            "廃墟": "廃墟",
+            "都市伝説": "都市伝説",
+            "実話": "実話",
+            "謎": "ミステリー",
+            "不気味|不思議": "怪奇現象",
+        },
+        "映画紹介": {
+            "Netflix": "Netflix",
+            "Amazon|アマゾン": "AmazonPrime",
+            "サスペンス": "サスペンス",
+            "ミステリー": "ミステリー",
+            "感動": "感動",
+            "泣ける": "泣ける",
+            "ホラー": "ホラー映画",
+            "アクション": "アクション",
+            "恋愛": "恋愛映画",
+        }
+    }
+    
+    # アカウント別のパターンでマッチング
+    patterns = keyword_dict.get(account_name, {})
+    for pattern, tag in patterns.items():
+        if re.search(pattern, script):
+            keywords.append(tag)
+    
+    return keywords[:5]
 
 
 def generate_tags_with_ai(script: str, account_name: str) -> list:
     """AIを使って台本から関連タグを生成"""
     
     if not USE_OLLAMA:
+        print("   ℹ️ AI機能が無効です（Ollama未起動）")
         return []
     
-    prompt = f"""以下の{account_name}向けの台本から、YouTubeのタグ（ハッシュタグ）を3-5個生成してください。
+    prompt = f"""以下の{account_name}向けの台本から、YouTubeショート動画に最適なタグ（ハッシュタグ）を5-8個生成してください。
 
 【台本】
 {script}
 
 【要件】
 - 台本の内容に関連する具体的なタグ
-- 日本語で簡潔に（2-5文字）
-- YouTubeで検索されやすい言葉
-- 既存の「{account_name}」「Shorts」以外
-- 3-5個のタグのみ
+- 日本語で簡潔に（2-5文字が理想）
+- YouTubeで検索されやすいトレンドワード
+- バズりやすいキーワードを優先
+- ジャンル固有のタグも含める
+- 5-8個のタグのみ
 
 【出力形式】
-タグのみを1行に1つずつ出力。説明不要。
+タグのみを1行に1つずつ出力してください。説明や番号は不要です。
 
 例:
-サプライズ
-恋愛
-感動
+衝撃
+必見
+知らなかった
 """
 
     try:
@@ -326,11 +376,11 @@ def generate_tags_with_ai(script: str, account_name: str) -> list:
                 ],
                 "stream": False,
                 "options": {
-                    "temperature": 0.3,
-                    "num_predict": 100,
+                    "temperature": 0.5,  # 多様性を少し上げる
+                    "num_predict": 150,
                 }
             },
-            timeout=60  # 30秒から60秒に延長
+            timeout=60
         )
         response.raise_for_status()
         result = response.json()
@@ -341,19 +391,24 @@ def generate_tags_with_ai(script: str, account_name: str) -> list:
         for line in tags_text.split('\n'):
             line = line.strip()
             # 番号や不要な接頭辞を削除
-            if line.startswith(('1.', '2.', '3.', '4.', '5.')):
+            if line and any(line.startswith(prefix) for prefix in ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.']):
                 line = line.split('.', 1)[1].strip()
-            # #を削除
-            line = line.replace('#', '').strip()
-            if line and len(line) <= 10 and not line.startswith(('タグ:', '例:')):
+            # #, -, *, など記号を削除
+            line = line.replace('#', '').replace('-', '').replace('*', '').strip()
+            # 説明文を除外
+            if line and len(line) <= 15 and not any(word in line for word in ['タグ:', '例:', '説明', '要件', 'YouTube']):
                 tags.append(line)
         
         if tags:
-            print(f"   ✅ AI生成タグ: {', '.join(tags[:5])}")
-        return tags[:5]  # 最大5個
+            print(f"   ✅ AI生成タグ: {', '.join(tags[:8])}")
+        return tags[:8]  # 最大8個
         
+    except requests.exceptions.Timeout:
+        print(f"   ⚠️ AI生成タイムアウト（60秒超過）")
+        return []
     except Exception as e:
         print(f"   ⚠️ タグ生成エラー: {e}")
+        return []
         return []
 
 
