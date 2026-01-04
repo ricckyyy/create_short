@@ -86,6 +86,29 @@ def check_and_start_services():
     
     # 2. VOICEVOX確認と再起動（パフォーマンス改善）
     print("   🎤 VOICEVOX接続確認...")
+    
+    # Dockerサービスの確認
+    docker_check = subprocess.run(
+        ["docker", "ps"],
+        capture_output=True,
+        text=True
+    )
+    
+    if docker_check.returncode != 0:
+        print("   ⚠️ Docker daemonが停止しています → 起動します...")
+        docker_start = subprocess.run(
+            ["sudo", "service", "docker", "start"],
+            capture_output=True,
+            text=True
+        )
+        if docker_start.returncode == 0:
+            print("   ✅ Docker daemon起動成功")
+            time.sleep(3)
+        else:
+            print(f"   ❌ Docker daemon起動失敗: {docker_start.stderr}")
+            services_ok = False
+            return services_ok
+    
     try:
         response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
         if response.status_code == 200:
@@ -93,8 +116,8 @@ def check_and_start_services():
             # 性能向上のため、毎回再起動
             print("   🔄 VOICEVOX再起動中（パフォーマンス最適化）...")
             subprocess.run(["docker", "restart", "voicevox"], capture_output=True, text=True)
-            print("   ⏳ VOICEVOX再起動待機... (15秒)")
-            time.sleep(15)
+            print("   ⏳ VOICEVOX再起動待機... (20秒)")
+            time.sleep(20)
             # 再起動後の確認
             try:
                 response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
@@ -120,8 +143,8 @@ def check_and_start_services():
             )
             
             if result.returncode == 0:
-                print("   ⏳ VOICEVOX起動中... (15秒待機)")
-                time.sleep(15)
+                print("   ⏳ VOICEVOX起動中... (20秒待機)")
+                time.sleep(20)
                 # 起動確認
                 try:
                     response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
