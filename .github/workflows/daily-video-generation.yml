@@ -6,10 +6,11 @@ name: 毎日動画生成
 # - セットアップ方法: docs/GITHUB_ACTIONS_SETUP.md を参照
 
 on:
-  schedule:
-    # 毎日 UTC 21:00 (日本時間 6:00 AM) に実行
-    - cron: '0 21 * * *'
-  workflow_dispatch: # 手動実行も可能
+  # 自動実行を一時的に無効化
+  # schedule:
+  #   # 毎日 UTC 21:00 (日本時間 6:00 AM) に実行
+  #   - cron: '0 21 * * *'
+  workflow_dispatch: # 手動実行のみ可能
 
 jobs:
   generate-videos:
