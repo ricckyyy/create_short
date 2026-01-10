@@ -7,6 +7,7 @@ OpenAI API / Anthropic Claude API / Ollama (ローカルLLM) を使用
 import os
 import json
 import random
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -220,7 +221,6 @@ def generate_script_with_ollama(account_name):
 それでは、{account_name}向けの台本を書いてください:"""
     
     max_retries = 3
-    import time
     
     for attempt in range(max_retries):
         try:
@@ -457,7 +457,6 @@ def generate_script_with_gemini(account_name):
             print(f"🎬 過去に紹介した映画: {len(past_titles)}本")
     
     max_retries = 3
-    import time
     
     for attempt in range(max_retries):
         try:
@@ -481,6 +480,10 @@ def generate_script_with_gemini(account_name):
             
             # コンテンツ生成
             response = model.generate_content(enhanced_prompt)
+            
+            # 安全にレスポンスをチェック
+            if not response or not hasattr(response, 'text'):
+                raise ValueError("Gemini returned invalid response structure")
             
             if not response.text:
                 raise ValueError("Gemini returned empty response")
@@ -614,8 +617,8 @@ def generate_script(account_name):
         print(f"🌟 Google Gemini ({GEMINI_MODEL}) で {account_name} の台本を生成中...")
         try:
             return generate_script_with_gemini(account_name)
-        except Exception as e:
-            print(f"⚠️ Gemini API失敗: {e}")
+        except Exception as gemini_error:
+            print(f"⚠️ Gemini API失敗: {gemini_error}")
             # Ollamaが利用可能ならフォールバック
             if USE_OLLAMA:
                 print(f"🔄 Ollamaにフォールバックします...")
@@ -623,7 +626,8 @@ def generate_script(account_name):
                     return generate_script_with_ollama(account_name)
                 except Exception as ollama_error:
                     print(f"⚠️ Ollamaフォールバックも失敗: {ollama_error}")
-                    raise e  # 元のGeminiエラーを返す
+                    # 両方のエラー情報を保持しつつ、元のエラーを返す
+                    raise gemini_error from ollama_error
             else:
                 raise  # Ollamaが無効なら元のエラーを返す
     elif USE_OPENAI:
