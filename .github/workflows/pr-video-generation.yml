@@ -75,6 +75,7 @@ jobs:
       - name: 動画生成スクリプトの実行
         timeout-minutes: 45
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           # PEXELS_API_KEY はオプション（config.py にハードコード済み）

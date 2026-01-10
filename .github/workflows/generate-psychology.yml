@@ -66,6 +66,7 @@ jobs:
       - name: 動画生成スクリプトの実行（心理テストラボ）
         timeout-minutes: 20
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           TARGET_ACCOUNT: "心理テストラボ"
