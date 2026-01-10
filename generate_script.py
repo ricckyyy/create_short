@@ -432,12 +432,14 @@ def generate_script_with_gemini(account_name):
     base_prompt = f"{config['system']}\n\n{config['prompt']}"
     
     # 映画紹介の場合、過去のタイトルを追加
+    past_titles = None
     if account_name == "映画紹介":
         past_titles = get_past_movie_titles()
         if past_titles:
             base_prompt += f"\n\n【重要】以下の映画は過去に紹介済みなので、絶対に選ばないでください:\n"
             base_prompt += "\n".join([f"- {title}" for title in past_titles[-20:]])  # 最新20件を表示
             base_prompt += "\n\nこれら以外の映画を選んでください。"
+            print(f"🎬 過去に紹介した映画: {len(past_titles)}本")
     
     if LEARNING_ENABLED:
         try:
@@ -449,12 +451,6 @@ def generate_script_with_gemini(account_name):
             enhanced_prompt = base_prompt
     else:
         enhanced_prompt = base_prompt
-    
-    # 映画紹介の場合、過去のタイトル数を表示
-    if account_name == "映画紹介":
-        past_titles = get_past_movie_titles()
-        if past_titles:
-            print(f"🎬 過去に紹介した映画: {len(past_titles)}本")
     
     max_retries = 3
     
@@ -485,7 +481,17 @@ def generate_script_with_gemini(account_name):
             if not response or not hasattr(response, 'text'):
                 raise ValueError("Gemini returned invalid response structure")
             
+            # セーフティフィルターやブロックチェック
+            if hasattr(response, 'prompt_feedback'):
+                if response.prompt_feedback.block_reason:
+                    raise ValueError(f"Gemini blocked content: {response.prompt_feedback.block_reason}")
+            
             if not response.text:
+                # コンテンツがブロックされた可能性をチェック
+                if hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, 'finish_reason'):
+                        raise ValueError(f"Gemini generation stopped: {candidate.finish_reason}")
                 raise ValueError("Gemini returned empty response")
             
             script = response.text.strip()
@@ -584,9 +590,6 @@ def generate_script_with_gemini(account_name):
             if attempt == max_retries - 1:
                 print(f"   ❌ 最大リトライ回数に到達。Gemini API呼び出し失敗")
                 raise
-    
-    # ここには到達しないはずだが、念のため
-    raise Exception("Gemini API呼び出しに失敗しました")
 
 
 def generate_script_fallback(account_name):
