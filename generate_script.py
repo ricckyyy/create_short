@@ -49,9 +49,9 @@ USE_OPENAI = os.getenv("OPENAI_API_KEY") is not None
 USE_ANTHROPIC = os.getenv("ANTHROPIC_API_KEY") is not None
 
 if USE_GEMINI:
-    import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    from google import genai
+    gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 if USE_OLLAMA:
     import requests
@@ -463,35 +463,23 @@ def generate_script_with_gemini(account_name):
             
             print(f"   📡 Gemini API接続中... (試行 {attempt + 1}/{max_retries})")
             
-            # Gemini モデルの設定
-            model = genai.GenerativeModel(
-                model_name=GEMINI_MODEL,
-                generation_config={
+            # Gemini API呼び出し (新SDK)
+            response = gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=enhanced_prompt,
+                config={
                     "temperature": 0.7,
                     "top_p": 0.9,
                     "top_k": 40,
-                    "max_output_tokens": 400,
+                    "max_output_tokens": 800,  # トークン数を増やす
                 }
             )
-            
-            # コンテンツ生成
-            response = model.generate_content(enhanced_prompt)
             
             # 安全にレスポンスをチェック
             if not response or not hasattr(response, 'text'):
                 raise ValueError("Gemini returned invalid response structure")
             
-            # セーフティフィルターやブロックチェック
-            if hasattr(response, 'prompt_feedback'):
-                if response.prompt_feedback.block_reason:
-                    raise ValueError(f"Gemini blocked content: {response.prompt_feedback.block_reason}")
-            
             if not response.text:
-                # コンテンツがブロックされた可能性をチェック
-                if hasattr(response, 'candidates') and response.candidates:
-                    candidate = response.candidates[0]
-                    if hasattr(candidate, 'finish_reason'):
-                        raise ValueError(f"Gemini generation stopped: {candidate.finish_reason}")
                 raise ValueError("Gemini returned empty response")
             
             script = response.text.strip()
