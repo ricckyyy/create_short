@@ -7,6 +7,7 @@ OpenAI API / Anthropic Claude API / Ollama (ローカルLLM) を使用
 import os
 import json
 import random
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -37,21 +38,31 @@ except ImportError:
 init_directories()
 
 # 使用するAI API を選択（環境変数から取得）
-# export USE_OLLAMA=true                   # Ollama (完全無料) - デフォルト有効
+# 優先順位: GEMINI_API_KEY > OPENAI_API_KEY > ANTHROPIC_API_KEY > Ollama
+# export GEMINI_API_KEY="your-key"         # Google Gemini (完全無料・GitHub Actions推奨)
+# export USE_OLLAMA=true                   # Ollama (完全無料) - ローカル推奨
 # export OPENAI_API_KEY="your-key"         # OpenAI
 # export ANTHROPIC_API_KEY="your-key"      # Anthropic
+USE_GEMINI = os.getenv("GEMINI_API_KEY") is not None
 USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() not in ("false", "0", "no")
 USE_OPENAI = os.getenv("OPENAI_API_KEY") is not None
 USE_ANTHROPIC = os.getenv("ANTHROPIC_API_KEY") is not None
+
+if USE_GEMINI:
+    from google import genai
+    gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 if USE_OLLAMA:
     import requests
     OLLAMA_API_URL = "http://127.0.0.1:11434/api/chat"
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma2:9b")
-elif USE_OPENAI:
+
+if USE_OPENAI:
     import openai
     openai.api_key = os.getenv("OPENAI_API_KEY")
-elif USE_ANTHROPIC:
+
+if USE_ANTHROPIC:
     import anthropic
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -210,7 +221,6 @@ def generate_script_with_ollama(account_name):
 それでは、{account_name}向けの台本を書いてください:"""
     
     max_retries = 3
-    import time
     
     for attempt in range(max_retries):
         try:
@@ -414,6 +424,162 @@ def generate_script_with_anthropic(account_name):
     return script
 
 
+def generate_script_with_gemini(account_name):
+    """Google Gemini API で台本生成"""
+    config = ACCOUNT_PROMPTS[account_name]
+    
+    # 学習プロンプトを生成（データがあれば）
+    base_prompt = f"{config['system']}\n\n{config['prompt']}"
+    
+    # 映画紹介の場合、過去のタイトルを追加
+    past_titles = None
+    if account_name == "映画紹介":
+        past_titles = get_past_movie_titles()
+        if past_titles:
+            base_prompt += f"\n\n【重要】以下の映画は過去に紹介済みなので、絶対に選ばないでください:\n"
+            base_prompt += "\n".join([f"- {title}" for title in past_titles[-20:]])  # 最新20件を表示
+            base_prompt += "\n\nこれら以外の映画を選んでください。"
+            print(f"🎬 過去に紹介した映画: {len(past_titles)}本")
+    
+    if LEARNING_ENABLED:
+        try:
+            # 過去の成功パターンを組み込む
+            enhanced_prompt = generate_learning_prompt(account_name, base_prompt)
+            print(f"🎓 学習データを活用してプロンプト生成")
+        except Exception as e:
+            print(f"⚠️ 学習プロンプト生成失敗、ベースプロンプトを使用: {e}")
+            enhanced_prompt = base_prompt
+    else:
+        enhanced_prompt = base_prompt
+    
+    max_retries = 3
+    
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                wait_time = 2 ** attempt
+                print(f"   ⏳ リトライ {attempt + 1}/{max_retries} - {wait_time}秒待機...")
+                time.sleep(wait_time)
+            
+            print(f"   📡 Gemini API接続中... (試行 {attempt + 1}/{max_retries})")
+            
+            # Gemini API呼び出し (新SDK)
+            response = gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=enhanced_prompt,
+                config={
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "top_k": 40,
+                    "max_output_tokens": 800,  # トークン数を増やす
+                }
+            )
+            
+            # 安全にレスポンスをチェック
+            if not response or not hasattr(response, 'text'):
+                raise ValueError("Gemini returned invalid response structure")
+            
+            if not response.text:
+                raise ValueError("Gemini returned empty response")
+            
+            script = response.text.strip()
+            print(f"   ✅ Gemini応答受信 ({len(script)}文字)")
+            
+            # デバッグ: 生成された内容を表示
+            if os.getenv("DEBUG_SCRIPT"):
+                print(f"\n   === 生成された生のスクリプト ===")
+                print(script)
+                print(f"   === 生のスクリプト終了 ===\n")
+            
+            # クリーニング
+            lines = []
+            in_script = True  # 台本部分かどうかのフラグ
+            skipped_lines = []  # デバッグ用
+            
+            for line in script.split('\n'):
+                line = line.strip()
+                
+                if not line:  # 空行はスキップ
+                    continue
+                
+                # 説明セクション開始を検出したら以降をスキップ
+                if line.startswith(('*', '•')) and any(keyword in line for keyword in ['ポイント', 'フック', '説明', '冒頭', '簡潔']):
+                    skipped_lines.append(f"説明セクション検出: {line[:50]}")
+                    in_script = False
+                    break
+                
+                if not in_script:
+                    break
+                
+                # 不要な接頭辞をスキップ
+                skip_prefixes = (
+                    '台本', '以下', '例:', '---', '**【',
+                    'はい、承知', '了解', 'かしこまりました',
+                    'ポイント:', '注意:', 'メモ:', '補足:',
+                    '※', 
+                    '（画面', '(画面', '（映像', '(映像', 
+                    '（ナレーション', '(ナレーション'
+                )
+                if line.startswith(skip_prefixes):
+                    skipped_lines.append(f"接頭辞スキップ: {line[:50]}")
+                    continue
+                
+                # **で囲まれた見出しをスキップ
+                if line.startswith('**') and line.endswith('**'):
+                    skipped_lines.append(f"見出しスキップ: {line[:50]}")
+                    continue
+                
+                # ハッシュタグ行をスキップ
+                if line.startswith('#') or line.count('#') >= 3:
+                    skipped_lines.append(f"ハッシュタグスキップ: {line[:50]}")
+                    continue
+                
+                # 番号付きリストや不要な接頭辞を削除
+                if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
+                    line = line.split('.', 1)[1].strip()
+                
+                if line:
+                    lines.append(line)
+            
+            # デバッグ情報を表示
+            if len(lines) == 0 and skipped_lines:
+                print(f"   ⚠️ 全行がスキップされました。スキップ理由:")
+                for reason in skipped_lines[:5]:  # 最初の5件のみ表示
+                    print(f"      - {reason}")
+            
+            print(f"   📊 クリーニング後: {len(lines)}行")
+            
+            # 行数調整（映画紹介は柔軟に、他は10行まで）
+            max_lines = 15 if account_name == "映画紹介" else 10
+            if len(lines) > max_lines:
+                lines = lines[:max_lines]
+                print(f"   ✂️ {max_lines}行にトリミング")
+            elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライまたはエラー
+                # 生成された台本内容をログ出力
+                print(f"   📝 生成された内容:")
+                for i, line in enumerate(lines, 1):
+                    print(f"      {i}. {line[:100]}")  # 最初の100文字まで表示
+                
+                if attempt < max_retries - 1:
+                    print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
+                    raise ValueError(f"Generated only {len(lines)} valid lines (minimum 5)")
+                else:
+                    # 最終試行でも5行未満の場合はエラーで終了（補完しない）
+                    print(f"   ❌ 最終試行でも{len(lines)}行のみ。台本生成失敗。")
+                    raise ValueError(f"❌ 台本生成失敗: {len(lines)}行しか生成できませんでした（最低5行必要）")
+            # 5～10行はそのまま使用
+            
+            print(f"   ✅ 最終: {len(lines)}行")
+            return '\n'.join(lines)
+            
+        except Exception as e:
+            error_type = type(e).__name__
+            print(f"   ❌ Geminiエラー (試行 {attempt + 1}/{max_retries}): {error_type}: {e}")
+            if attempt == max_retries - 1:
+                print(f"   ❌ 最大リトライ回数に到達。Gemini API呼び出し失敗")
+                raise
+
+
 def generate_script_fallback(account_name):
     """API が使えない場合のフォールバック（ランダムテンプレート）"""
     templates = {
@@ -437,15 +603,33 @@ def generate_script_fallback(account_name):
 
 def generate_script(account_name):
     """台本を生成（利用可能なAPIを自動選択）"""
-    if USE_OLLAMA:
-        print(f"🦙 Ollama ({OLLAMA_MODEL}) で {account_name} の台本を生成中...")
-        return generate_script_with_ollama(account_name)
+    # 優先順位: Gemini > OpenAI > Anthropic > Ollama > Fallback
+    if USE_GEMINI:
+        print(f"🌟 Google Gemini ({GEMINI_MODEL}) で {account_name} の台本を生成中...")
+        try:
+            return generate_script_with_gemini(account_name)
+        except Exception as gemini_error:
+            print(f"⚠️ Gemini API失敗: {gemini_error}")
+            # Ollamaが利用可能ならフォールバック
+            if USE_OLLAMA:
+                print(f"🔄 Ollamaにフォールバックします...")
+                try:
+                    return generate_script_with_ollama(account_name)
+                except Exception as ollama_error:
+                    print(f"⚠️ Ollamaフォールバックも失敗: {ollama_error}")
+                    # 両方のエラー情報を保持しつつ、元のエラーを返す
+                    raise gemini_error from ollama_error
+            else:
+                raise  # Ollamaが無効なら元のエラーを返す
     elif USE_OPENAI:
         print(f"🤖 OpenAI GPT-4 で {account_name} の台本を生成中...")
         return generate_script_with_openai(account_name)
     elif USE_ANTHROPIC:
         print(f"🤖 Claude で {account_name} の台本を生成中...")
         return generate_script_with_anthropic(account_name)
+    elif USE_OLLAMA:
+        print(f"🦙 Ollama ({OLLAMA_MODEL}) で {account_name} の台本を生成中...")
+        return generate_script_with_ollama(account_name)
     else:
         print(f"⚠️ AI未設定。テンプレートから {account_name} の台本を選択...")
         return generate_script_fallback(account_name)
@@ -657,10 +841,14 @@ if __name__ == "__main__":
     print("🚀 AI 台本生成スタート")
     print(f"📅 日付: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}")
     
-    if USE_OPENAI:
+    if USE_GEMINI:
+        print(f"🔑 使用API: Google Gemini ({GEMINI_MODEL})")
+    elif USE_OPENAI:
         print("🔑 使用API: OpenAI GPT-4")
     elif USE_ANTHROPIC:
         print("🔑 使用API: Anthropic Claude")
+    elif USE_OLLAMA:
+        print(f"🔑 使用API: Ollama ({OLLAMA_MODEL})")
     else:
         print("⚠️ APIキー未設定 - テンプレートモードで動作")
     

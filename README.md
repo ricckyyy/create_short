@@ -52,6 +52,12 @@ TikTok/YouTube Shorts向けの縦型動画（720x1280）を自動生成するWeb
   - 環境変数 `PIXABAY_API_KEY` で設定
   - 登録: https://pixabay.com/api/docs/
   - `.env` ファイルまたはシステム環境変数で設定可能
+- **Google Gemini API** キー（オプション、AI台本生成用・GitHub Actions推奨）
+  - 環境変数 `GEMINI_API_KEY` で設定
+  - 取得方法: https://aistudio.google.com/app/apikey
+  - **完全無料**: 月100万トークンまで無料（十分な量）
+  - **GitHub Actions推奨**: セルフホストランナー不要でクラウド実行可能
+  - `.env` ファイル、システム環境変数、またはGitHub Secretsで設定可能
 
 ### 環境変数設定（オプション）
 `.env` ファイルをプロジェクトルートに作成:
@@ -59,9 +65,26 @@ TikTok/YouTube Shorts向けの縦型動画（720x1280）を自動生成するWeb
 # Pixabay API（Pexelsが使えない時のフォールバック）
 PIXABAY_API_KEY=your_pixabay_api_key_here
 
-# Ollama設定
-OLLAMA_MODEL=gemma3:4b
+# Google Gemini API（AI台本生成用・推奨）
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Ollama設定（ローカル実行時）
+OLLAMA_MODEL=gemma2:9b
+USE_OLLAMA=true
 ```
+
+### AI台本生成の優先順位
+台本生成時、以下の優先順位でAIサービスを選択します：
+1. **Google Gemini API** (`GEMINI_API_KEY` 設定時) - GitHub Actions推奨
+2. **OpenAI API** (`OPENAI_API_KEY` 設定時)
+3. **Anthropic Claude API** (`ANTHROPIC_API_KEY` 設定時)
+4. **Ollama** (ローカルLLM) - ローカル実行推奨
+5. テンプレートフォールバック
+
+**GitHub Actions実行時の動作**:
+- Gemini API設定済み → Gemini使用（完全無料、クラウド実行可）
+- Gemini失敗 → Ollamaにフォールバック（セルフホストランナーの場合のみ）
+- ログに使用したAIサービスを明記
 
 ## 🚀 セットアップ
 
@@ -151,6 +174,45 @@ python daily_generation.py
 - PRごとに自動生成・レビュー可能
 
 詳細: [GitHub Actions セットアップガイド](docs/GITHUB_ACTIONS_SETUP.md)
+
+#### 🎬 GitHub Actions で生成された動画をダウンロード
+
+**方法1: GitHub CLI を使う**（推奨・最も簡単）
+
+```bash
+# GitHub CLI をインストール（初回のみ）
+brew install gh  # macOS
+# または
+# Windows: choco install gh
+# Linux: https://github.com/cli/cli#installation
+
+# 認証（初回のみ）
+gh auth login
+
+# スクリプトを実行
+chmod +x scripts/download_artifacts.sh
+./scripts/download_artifacts.sh
+
+# または、Run IDを指定
+./scripts/download_artifacts.sh <RUN_ID>
+```
+
+**方法2: Python スクリプトを使う**
+
+```bash
+python scripts/download_artifacts.py
+
+# または、Run IDを指定
+python scripts/download_artifacts.py <RUN_ID>
+```
+
+**方法3: GitHub UIから手動ダウンロード**
+
+1. リポジトリの **Actions** タブへ移動
+2. ダウンロードしたいワークフロー実行をクリック
+3. 下部の **Artifacts** セクションからダウンロード
+
+ダウンロードされた動画は `downloaded_videos/` ディレクトリに保存されます。
 
 ### コマンドライン版（従来）
 ```bash

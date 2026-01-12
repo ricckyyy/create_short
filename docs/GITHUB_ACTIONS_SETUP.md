@@ -69,11 +69,20 @@ GitHub Actionsワークフロー `.github/workflows/daily-video-generation.yml` 
 
 | Secret名 | 説明 | 必須 |
 |---------|------|------|
+| `GEMINI_API_KEY` | Google Gemini APIキー（AI台本生成用） | **推奨**（GitHub Actions実行時） |
 | `PEXELS_API_KEY` | Pexels APIキー | オプション（config.pyに設定済み） |
 | `PIXABAY_API_KEY` | Pixabay APIキー（フォールバック用） | オプション |
 | `OLLAMA_MODEL` | 使用するOllamaモデル | オプション（デフォルト: gemma2:9b） |
 
 #### API キーの取得方法
+
+**Google Gemini API**（無料・推奨）:
+1. https://aistudio.google.com/app/apikey にアクセス
+2. Googleアカウントでログイン
+3. 「Create API key」をクリック
+4. 生成されたAPIキーをコピー
+5. **無料枠**: 月100万トークン（十分な量）
+6. **メリット**: セルフホストランナー不要、完全クラウド実行可能
 
 **Pexels API**（無料）:
 1. https://www.pexels.com/api/ にアクセス
@@ -85,7 +94,45 @@ GitHub Actionsワークフロー `.github/workflows/daily-video-generation.yml` 
 2. アカウント作成
 3. API Keyを取得
 
-### 3. ワークフローの有効化
+#### GitHub Secretsの登録方法
+
+1. リポジトリページの **Settings** タブをクリック
+2. 左サイドバーから **Secrets and variables** → **Actions** を選択
+3. **New repository secret** をクリック
+4. **Name** に `GEMINI_API_KEY` を入力
+5. **Secret** に取得したAPIキーを貼り付け
+6. **Add secret** をクリック
+
+### 3. AI台本生成サービスの選択
+
+#### GitHub Actionsでの推奨構成
+
+**パターン1: Gemini API（完全クラウド実行・推奨）**
+- `GEMINI_API_KEY` をGitHub Secretsに設定
+- セルフホストランナー不要
+- 完全無料（月100万トークン）
+- Ollama不要でクラウドランナー（ubuntu-latest）で実行可能
+
+**パターン2: Ollama（セルフホストランナー）**
+- セルフホストランナーをセットアップ
+- Ollamaをサーバーにインストール・起動
+- `GEMINI_API_KEY` 未設定の場合、自動的にOllamaを使用
+
+**パターン3: ハイブリッド（推奨）**
+- `GEMINI_API_KEY` を設定
+- Gemini API失敗時、自動的にOllamaにフォールバック（セルフホストランナーの場合）
+- 高い可用性を実現
+
+#### AI サービスの優先順位
+
+台本生成時、以下の優先順位でAIサービスを選択：
+1. **Google Gemini API** (`GEMINI_API_KEY` 設定時)
+2. **OpenAI API** (`OPENAI_API_KEY` 設定時)
+3. **Anthropic Claude API** (`ANTHROPIC_API_KEY` 設定時)
+4. **Ollama** (ローカルLLM)
+5. テンプレートフォールバック
+
+### 4. ワークフローの有効化
 
 1. リポジトリの **Actions** タブへ移動
 2. 「毎日動画生成」ワークフローを選択
