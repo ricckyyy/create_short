@@ -42,6 +42,9 @@ UPLOAD_DIR = DATA_DIR / "upload"
 UPLOAD_QUEUE_DIR = UPLOAD_DIR / "queue"             # 投稿待ち
 UPLOAD_HISTORY_DIR = UPLOAD_DIR / "history"         # 投稿履歴
 
+# データベース
+DATABASE_DIR = DATA_DIR / "database"                # SQLiteデータベース
+
 # === アカウント設定 ===
 
 ACCOUNTS = {
@@ -158,6 +161,7 @@ def init_directories():
         UPLOAD_DIR,
         UPLOAD_QUEUE_DIR,
         UPLOAD_HISTORY_DIR,
+        DATABASE_DIR,  # データベースディレクトリを追加
     ]
     
     for directory in directories:

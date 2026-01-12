@@ -49,6 +49,7 @@ jobs:
           mkdir -p data/scripts/history
           mkdir -p data/logs/generation
           mkdir -p data/upload
+          mkdir -p data/database
       
       - name: Dockerのセットアップ
         uses: docker/setup-buildx-action@v3
