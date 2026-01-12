@@ -94,87 +94,101 @@ def check_and_start_services():
     # 2. VOICEVOX確認と再起動（パフォーマンス改善）
     print("   🎤 VOICEVOX接続確認...")
     
-    # Dockerサービスの確認
-    docker_check = subprocess.run(
-        ["docker", "ps"],
-        capture_output=True,
-        text=True
-    )
+    # CI環境の検出
+    is_ci = os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true"
     
-    if docker_check.returncode != 0:
-        print("   ⚠️ Docker daemonが停止しています → 起動します...")
-        docker_start = subprocess.run(
-            ["sudo", "service", "docker", "start"],
+    # Dockerサービスの確認（CI環境ではスキップ）
+    if not is_ci:
+        docker_check = subprocess.run(
+            ["docker", "ps"],
             capture_output=True,
             text=True
         )
-        if docker_start.returncode == 0:
-            print("   ✅ Docker daemon起動成功")
-            time.sleep(3)
-        else:
-            print(f"   ❌ Docker daemon起動失敗: {docker_start.stderr}")
-            services_ok = False
-            return services_ok
+        
+        if docker_check.returncode != 0:
+            print("   ⚠️ Docker daemonが停止しています → 起動します...")
+            docker_start = subprocess.run(
+                ["sudo", "service", "docker", "start"],
+                capture_output=True,
+                text=True
+            )
+            if docker_start.returncode == 0:
+                print("   ✅ Docker daemon起動成功")
+                time.sleep(3)
+            else:
+                print(f"   ❌ Docker daemon起動失敗: {docker_start.stderr}")
+                services_ok = False
+                return services_ok
     
     try:
         response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
         if response.status_code == 200:
             print("   ✅ VOICEVOX: 起動中")
-            # 性能向上のため、毎回再起動
-            print("   🔄 VOICEVOX再起動中（パフォーマンス最適化）...")
-            subprocess.run(["docker", "restart", "voicevox"], capture_output=True, text=True)
-            print("   ⏳ VOICEVOX再起動待機... (20秒)")
-            time.sleep(20)
-            # 再起動後の確認
-            try:
-                response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
-                if response.status_code == 200:
-                    print("   ✅ VOICEVOX: 再起動完了")
-                else:
-                    print("   ⚠️ VOICEVOX: 再起動後の応答異常")
+            # 性能向上のため、毎回再起動（CI環境ではスキップ）
+            if not is_ci:
+                print("   🔄 VOICEVOX再起動中（パフォーマンス最適化）...")
+                subprocess.run(["docker", "restart", "voicevox"], capture_output=True, text=True)
+                print("   ⏳ VOICEVOX再起動待機... (20秒)")
+                time.sleep(20)
+                # 再起動後の確認
+                try:
+                    response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
+                    if response.status_code == 200:
+                        print("   ✅ VOICEVOX: 再起動完了")
+                    else:
+                        print("   ⚠️ VOICEVOX: 再起動後の応答異常")
+                        services_ok = False
+                except:
+                    print("   ❌ VOICEVOX: 再起動後の接続失敗")
                     services_ok = False
-            except:
-                print("   ❌ VOICEVOX: 再起動後の接続失敗")
-                services_ok = False
+            else:
+                print("   ⏭️  VOICEVOX再起動スキップ（CI環境）")
         else:
             print("   ⚠️ VOICEVOX: 応答異常")
             services_ok = False
     except requests.exceptions.ConnectionError:
-        print("   ❌ VOICEVOX: 停止中 → 起動します...")
-        try:
-            # VOICEVOXコンテナを起動（Dockerサービスが起動している前提）
-            result = subprocess.run(
-                ["docker", "start", "voicevox"],
-                capture_output=True,
-                text=True
-            )
-            
-            if result.returncode == 0:
-                print("   ⏳ VOICEVOX起動中... (20秒待機)")
-                time.sleep(20)
-                # 起動確認
-                try:
-                    response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
-                    if response.status_code == 200:
-                        print("   ✅ VOICEVOX: 起動成功")
-                    else:
-                        print("   ⚠️ VOICEVOX: 起動したが応答異常")
-                        services_ok = False
-                except:
-                    print("   ❌ VOICEVOX: 起動失敗（タイムアウトまたは接続エラー）")
-                    services_ok = False
-            elif "Cannot connect to the Docker daemon" in result.stderr:
-                print("   ⚠️ Dockerサービスが起動していません")
-                print("   💡 以下のコマンドを手動で実行してください:")
-                print("      sudo service docker start")
-                print("      docker start voicevox")
-                services_ok = False
-            else:
-                print(f"   ❌ VOICEVOXコンテナ起動失敗: {result.stderr.strip()}")
-                services_ok = False
-        except Exception as e:
-            print(f"   ❌ VOICEVOX起動エラー: {e}")
+        print("   ❌ VOICEVOX: 停止中")
+        if is_ci:
+            # CI環境ではVOICEVOXは別ステップで起動されるべき
+            print("   ⚠️ CI環境でVOICEVOXが応答しません")
+            print("   💡 ワークフローでVOICEVOXが正しく起動されているか確認してください")
             services_ok = False
+        else:
+            print("   → 起動します...")
+            try:
+                # VOICEVOXコンテナを起動（Dockerサービスが起動している前提）
+                result = subprocess.run(
+                    ["docker", "start", "voicevox"],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    print("   ⏳ VOICEVOX起動中... (20秒待機)")
+                    time.sleep(20)
+                    # 起動確認
+                    try:
+                        response = requests.get("http://127.0.0.1:50021/speakers", timeout=30)
+                        if response.status_code == 200:
+                            print("   ✅ VOICEVOX: 起動成功")
+                        else:
+                            print("   ⚠️ VOICEVOX: 起動したが応答異常")
+                            services_ok = False
+                    except:
+                        print("   ❌ VOICEVOX: 起動失敗（タイムアウトまたは接続エラー）")
+                        services_ok = False
+                elif "Cannot connect to the Docker daemon" in result.stderr:
+                    print("   ⚠️ Dockerサービスが起動していません")
+                    print("   💡 以下のコマンドを手動で実行してください:")
+                    print("      sudo service docker start")
+                    print("      docker start voicevox")
+                    services_ok = False
+                else:
+                    print(f"   ❌ VOICEVOXコンテナ起動失敗: {result.stderr.strip()}")
+                    services_ok = False
+            except Exception as e:
+                print(f"   ❌ VOICEVOX起動エラー: {e}")
+                services_ok = False
     except Exception as e:
         print(f"   ❌ VOICEVOX確認エラー: {e}")
         services_ok = False
