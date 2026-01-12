@@ -46,43 +46,50 @@ def check_and_start_services():
     
     services_ok = True
     
-    # 1. Ollama確認
-    print("   📡 Ollama接続確認...")
-    try:
-        response = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            print("   ✅ Ollama: 起動中")
-        else:
-            print("   ⚠️ Ollama: 応答異常")
-            services_ok = False
-    except requests.exceptions.ConnectionError:
-        print("   ❌ Ollama: 停止中 → 起動します...")
+    # 環境変数でGemini API使用かOllama使用かを判定
+    use_gemini = os.getenv("GEMINI_API_KEY") is not None
+    use_ollama = os.getenv("USE_OLLAMA", "true").lower() not in ("false", "0", "no")
+    
+    # 1. Ollama確認（Gemini API使用時はスキップ）
+    if use_gemini or not use_ollama:
+        print("   ⏭️  Ollama: スキップ（Gemini API使用）")
+    else:
+        print("   📡 Ollama接続確認...")
         try:
-            subprocess.Popen(
-                ["nohup", "ollama", "serve"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None
-            )
-            print("   ⏳ Ollama起動中... (5秒待機)")
-            time.sleep(5)
-            # 起動確認
+            response = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
+            if response.status_code == 200:
+                print("   ✅ Ollama: 起動中")
+            else:
+                print("   ⚠️ Ollama: 応答異常")
+                services_ok = False
+        except requests.exceptions.ConnectionError:
+            print("   ❌ Ollama: 停止中 → 起動します...")
             try:
-                response = requests.get("http://127.0.0.1:11434/api/tags", timeout=10)
-                if response.status_code == 200:
-                    print("   ✅ Ollama: 起動成功")
-                else:
-                    print("   ⚠️ Ollama: 起動したが応答異常")
+                subprocess.Popen(
+                    ["nohup", "ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    preexec_fn=os.setpgrp if hasattr(os, 'setpgrp') else None
+                )
+                print("   ⏳ Ollama起動中... (5秒待機)")
+                time.sleep(5)
+                # 起動確認
+                try:
+                    response = requests.get("http://127.0.0.1:11434/api/tags", timeout=10)
+                    if response.status_code == 200:
+                        print("   ✅ Ollama: 起動成功")
+                    else:
+                        print("   ⚠️ Ollama: 起動したが応答異常")
+                        services_ok = False
+                except:
+                    print("   ❌ Ollama: 起動失敗")
                     services_ok = False
-            except:
-                print("   ❌ Ollama: 起動失敗")
+            except Exception as e:
+                print(f"   ❌ Ollama起動エラー: {e}")
                 services_ok = False
         except Exception as e:
-            print(f"   ❌ Ollama起動エラー: {e}")
+            print(f"   ❌ Ollama確認エラー: {e}")
             services_ok = False
-    except Exception as e:
-        print(f"   ❌ Ollama確認エラー: {e}")
-        services_ok = False
     
     # 2. VOICEVOX確認と再起動（パフォーマンス改善）
     print("   🎤 VOICEVOX接続確認...")
@@ -175,7 +182,8 @@ def check_and_start_services():
     if not services_ok:
         print("\n⚠️ 一部のサービスが正常に起動していません")
         print("   手動で確認してください:")
-        print("   - Ollama: ollama serve")
+        if not use_gemini and use_ollama:
+            print("   - Ollama: ollama serve")
         print("   - VOICEVOX: docker start voicevox")
         return False
     
