@@ -52,7 +52,10 @@ def check_and_start_services():
     
     # 1. Ollama確認（Gemini API使用時はスキップ）
     if use_gemini or not use_ollama:
-        print("   ⏭️  Ollama: スキップ（Gemini API使用）")
+        if use_gemini:
+            print("   ⏭️  Ollama: スキップ（Gemini API使用）")
+        else:
+            print("   ⏭️  Ollama: スキップ（USE_OLLAMA=false）")
     else:
         print("   📡 Ollama接続確認...")
         try:
