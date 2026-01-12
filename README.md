@@ -175,6 +175,45 @@ python daily_generation.py
 
 詳細: [GitHub Actions セットアップガイド](docs/GITHUB_ACTIONS_SETUP.md)
 
+#### 🎬 GitHub Actions で生成された動画をダウンロード
+
+**方法1: GitHub CLI を使う**（推奨・最も簡単）
+
+```bash
+# GitHub CLI をインストール（初回のみ）
+brew install gh  # macOS
+# または
+# Windows: choco install gh
+# Linux: https://github.com/cli/cli#installation
+
+# 認証（初回のみ）
+gh auth login
+
+# スクリプトを実行
+chmod +x scripts/download_artifacts.sh
+./scripts/download_artifacts.sh
+
+# または、Run IDを指定
+./scripts/download_artifacts.sh <RUN_ID>
+```
+
+**方法2: Python スクリプトを使う**
+
+```bash
+python scripts/download_artifacts.py
+
+# または、Run IDを指定
+python scripts/download_artifacts.py <RUN_ID>
+```
+
+**方法3: GitHub UIから手動ダウンロード**
+
+1. リポジトリの **Actions** タブへ移動
+2. ダウンロードしたいワークフロー実行をクリック
+3. 下部の **Artifacts** セクションからダウンロード
+
+ダウンロードされた動画は `downloaded_videos/` ディレクトリに保存されます。
+
 ### コマンドライン版（従来）
 ```bash
 source ~/myenv/bin/activate
