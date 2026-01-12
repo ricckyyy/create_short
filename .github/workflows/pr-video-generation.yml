@@ -17,7 +17,7 @@ on:
 
 jobs:
   generate-videos-on-pr:
-    runs-on: self-hosted # セルフホストランナーを使用
+    runs-on: ubuntu-latest # GitHub-hostedランナーに変更（Gemini API使用のため）
     timeout-minutes: 60 # 1時間のタイムアウト（24時間動作防止）
     
     # 最小権限の原則に従って、必要な権限のみを付与
@@ -50,33 +50,37 @@ jobs:
           mkdir -p data/logs/generation
           mkdir -p data/upload
       
-      - name: Ollamaサービスの起動確認
-        timeout-minutes: 5
-        run: |
-          echo "Ollamaサービスの状態を確認中..."
-          if ! curl -s http://127.0.0.1:11434/api/tags > /dev/null 2>&1; then
-            echo "Ollamaが起動していません。起動を試みます..."
-            nohup ollama serve > /dev/null 2>&1 &
-            sleep 10
-          fi
-          curl http://127.0.0.1:11434/api/tags || echo "Ollama起動に失敗しました（続行します）"
+      - name: Dockerのセットアップ
+        uses: docker/setup-buildx-action@v3
       
-      - name: VOICEVOXの起動確認
-        timeout-minutes: 5
+      - name: VOICEVOXの起動
+        timeout-minutes: 10
         run: |
-          echo "VOICEVOXの状態を確認中..."
-          if ! curl -s http://127.0.0.1:50021/speakers > /dev/null 2>&1; then
-            echo "VOICEVOXが起動していません。Dockerコンテナを起動します..."
-            docker start voicevox || docker run -d --name voicevox -p 50021:50021 voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-            sleep 20
-          fi
-          curl http://127.0.0.1:50021/speakers || echo "VOICEVOX起動に失敗しました"
+          echo "VOICEVOXコンテナを起動中..."
+          docker run -d --name voicevox \
+            -p 50021:50021 \
+            voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+          
+          echo "VOICEVOX起動待機（30秒）..."
+          sleep 30
+          
+          # 起動確認（最大10回リトライ）
+          for i in {1..10}; do
+            if curl -s http://127.0.0.1:50021/speakers > /dev/null 2>&1; then
+              echo "✅ VOICEVOX起動成功"
+              break
+            fi
+            echo "VOICEVOX起動待機中... ($i/10)"
+            sleep 10
+          done
+          
+          curl http://127.0.0.1:50021/speakers || (echo "❌ VOICEVOX起動失敗" && exit 1)
       
       - name: 動画生成スクリプトの実行
         timeout-minutes: 45
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'gemma2:9b' }}
+          USE_OLLAMA: 'false'  # Ollamaを無効化してGemini APIを使用
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           # PEXELS_API_KEY はオプション（config.py にハードコード済み）
         run: |
