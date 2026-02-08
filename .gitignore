@@ -62,3 +62,12 @@ test_*.py
 full_test_log.txt
 output.txt
 short_output.txt
+
+# エージェント生成ファイル（一時的なドキュメント）
+HANDOFF_*.md
+IMPLEMENTATION_*.md
+TEST_RESULT*.md
+TIMEOUT_*.md
+WORKFLOW_*.md
+pr_body.txt
+test_summary.txt
