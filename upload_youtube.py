@@ -409,7 +409,6 @@ def generate_tags_with_ai(script: str, account_name: str) -> list:
     except Exception as e:
         print(f"   ⚠️ タグ生成エラー: {e}")
         return []
-        return []
 
 
 if __name__ == "__main__":

@@ -1,18 +1,18 @@
-# --- 必要ライブラリ ---
-# pip install moviepy pydub requests
-
 import os
+import time
+import random
+import traceback
 from pathlib import Path
-from config import init_directories, ASSETS_VIDEO_DIR
-
-# ディレクトリ初期化
-init_directories()
 
 import requests
 from moviepy import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip, ColorClip
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import shutil
+
+from config import init_directories, ASSETS_VIDEO_DIR, PEXELS_API_KEY
+
+init_directories()
 
 # VOICEVOX Engine API
 VOICEVOX_API = "http://127.0.0.1:50021"
@@ -117,7 +117,6 @@ def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, 
         
     except Exception as e:
         print(f"❌ 音声生成エラー: {e}")
-        import traceback
         traceback.print_exc()
         raise
 
@@ -125,8 +124,6 @@ def generate_voice(text, speaker_index=0, style_index=0, pitch=-0.5, speed=1.0, 
 # Pexels: 動画検索
 # -------------------------
 def search_pexels_video(query, api_key, max_results=15, max_retries=3):
-    import time
-    import random
     print(f"  🔍 Pexels検索: '{query}'")
     headers = {"Authorization": api_key}
     
@@ -184,7 +181,6 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             print(f"        エラー詳細: {type(e).__name__}: {e}")
             if attempt == max_retries - 1:
                 print(f"     ❌ 最大リトライ回数に到達。検索失敗: '{query}'")
-                import traceback
                 traceback.print_exc()
                 return []
                 
@@ -193,7 +189,6 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             print(f"        エラー詳細: {type(e).__name__}: {e}")
             if attempt == max_retries - 1:
                 print(f"     ❌ 最大リトライ回数に到達。接続失敗: '{query}'")
-                import traceback
                 traceback.print_exc()
                 return []
                 
@@ -206,7 +201,6 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             if status_code in [502, 503, 429]:
                 if attempt == max_retries - 1:
                     print(f"     ❌ 最大リトライ回数に到達。APIエラー: '{query}'")
-                    import traceback
                     traceback.print_exc()
                     return []
                 else:
@@ -214,7 +208,6 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             else:
                 # それ以外のHTTPエラー（404, 401など）はリトライしない
                 print(f"     ❌ APIエラー。リトライしません: '{query}'")
-                import traceback
                 traceback.print_exc()
                 return []
             
@@ -228,7 +221,6 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
             print(f"        エラー詳細: {e}")
             if attempt == max_retries - 1:
                 print(f"     ❌ 最大リトライ回数に到達。検索失敗: '{query}'")
-                import traceback
                 traceback.print_exc()
                 return []
     
@@ -238,8 +230,6 @@ def search_pexels_video(query, api_key, max_results=15, max_retries=3):
 # Pixabay: 動画検索（フォールバック）
 # -------------------------
 def search_pixabay_video(query, api_key, max_results=15, max_retries=3):
-    import time
-    import random
     print(f"  🔍 Pixabay検索: '{query}'")
     
     for attempt in range(max_retries):
@@ -340,7 +330,6 @@ def search_video_with_fallback(query, pexels_key, pixabay_key=None):
 # 動画ダウンロード
 # -------------------------
 def download_video(url, filename, max_retries=3):
-    import time
     if not url:
         print(f"     ⚠️ URLなし、ダウンロードスキップ")
         return None
@@ -379,7 +368,6 @@ def download_video(url, filename, max_retries=3):
             print(f"        エラー詳細: {type(e).__name__}: {e}")
             if attempt == max_retries - 1:
                 print(f"     ❌ 最大リトライ回数に到達。ダウンロード失敗")
-                import traceback
                 traceback.print_exc()
                 return None
                 
@@ -388,7 +376,6 @@ def download_video(url, filename, max_retries=3):
             print(f"        エラー詳細: {type(e).__name__}: {e}")
             if attempt == max_retries - 1:
                 print(f"     ❌ 最大リトライ回数に到達。接続失敗")
-                import traceback
                 traceback.print_exc()
                 return None
                 
@@ -397,7 +384,6 @@ def download_video(url, filename, max_retries=3):
             print(f"\n     🚫 HTTPエラー (ステータスコード: {status_code})")
             print(f"        エラー詳細: {type(e).__name__}: {e}")
             print(f"     ❌ ダウンロードエラー。リトライしません")
-            import traceback
             traceback.print_exc()
             return None
             
@@ -411,7 +397,6 @@ def download_video(url, filename, max_retries=3):
             print(f"        エラー詳細: {e}")
             if attempt == max_retries - 1:
                 print(f"     ❌ 最大リトライ回数に到達。ダウンロード失敗")
-                import traceback
                 traceback.print_exc()
                 return None
     
@@ -494,15 +479,8 @@ def create_video_with_keywords(script_lines, keywords, api_key, voice_file, outp
         
     except Exception as e:
         print(f"\n❌ 動画生成エラー: {e}")
-        import traceback
         traceback.print_exc()
         raise
-
-# -------------------------
-# 実行例
-# -------------------------
-PEXELS_API_KEY = "QqcFiUzxOsDiOYP3sUQyty0hKhTGdzgBQdPQ8nymB7Y1KaXkYocVkctS"
-
 
 # --- 各アカウント用台本・キーワード ---
 accounts = [
@@ -526,9 +504,6 @@ accounts = [
     }
 ]
 
-
-# 使い方：
-# accounts = new_accounts  # 新しい収益化向け台本に差し替え
 
 if __name__ == "__main__":
     # --- 生成したいアカウント名を指定 ---
