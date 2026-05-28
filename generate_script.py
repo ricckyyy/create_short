@@ -156,6 +156,75 @@ Netflix、Prime Video、Disney+などで観られる映画を1つ紹介する台
 }
 
 
+def _clean_script_output(script, account_name, attempt, max_retries):
+    """AI生成スクリプトの後処理（不要行の除去・行数チェック）"""
+    if os.getenv("DEBUG_SCRIPT"):
+        print(f"\n   === 生成された生のスクリプト ===")
+        print(script)
+        print(f"   === 生のスクリプト終了 ===\n")
+
+    lines = []
+    in_script = True
+    skipped_lines = []
+
+    for line in script.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(('*', '•')) and any(k in line for k in ['ポイント', 'フック', '説明', '冒頭', '簡潔']):
+            skipped_lines.append(f"説明セクション検出: {line[:50]}")
+            in_script = False
+            break
+        if not in_script:
+            break
+        skip_prefixes = (
+            '台本', '以下', '例:', '---', '**【',
+            'はい、承知', '了解', 'かしこまりました',
+            'ポイント:', '注意:', 'メモ:', '補足:',
+            '※',
+            '（画面', '(画面', '（映像', '(映像',
+            '（ナレーション', '(ナレーション'
+        )
+        if line.startswith(skip_prefixes):
+            skipped_lines.append(f"接頭辞スキップ: {line[:50]}")
+            continue
+        if line.startswith('**') and line.endswith('**'):
+            skipped_lines.append(f"見出しスキップ: {line[:50]}")
+            continue
+        if line.startswith('#') or line.count('#') >= 3:
+            skipped_lines.append(f"ハッシュタグスキップ: {line[:50]}")
+            continue
+        if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
+            line = line.split('.', 1)[1].strip()
+        if line:
+            lines.append(line)
+
+    if len(lines) == 0 and skipped_lines:
+        print(f"   ⚠️ 全行がスキップされました。スキップ理由:")
+        for reason in skipped_lines[:5]:
+            print(f"      - {reason}")
+
+    print(f"   📊 クリーニング後: {len(lines)}行")
+
+    max_lines = 15 if account_name == "映画紹介" else 10
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        print(f"   ✂️ {max_lines}行にトリミング")
+    elif len(lines) < 5:
+        print(f"   📝 生成された内容:")
+        for i, line in enumerate(lines, 1):
+            print(f"      {i}. {line[:100]}")
+        if attempt < max_retries - 1:
+            print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
+            raise ValueError(f"Generated only {len(lines)} valid lines (minimum 5)")
+        else:
+            print(f"   ❌ 最終試行でも{len(lines)}行のみ。台本生成失敗。")
+            raise ValueError(f"❌ 台本生成失敗: {len(lines)}行しか生成できませんでした（最低5行必要）")
+
+    print(f"   ✅ 最終: {len(lines)}行")
+    return '\n'.join(lines)
+
+
 def generate_script_with_ollama(account_name):
     """Ollama (ローカルLLM) で台本生成 - 学習機能付き"""
     config = ACCOUNT_PROMPTS[account_name]
@@ -181,12 +250,6 @@ def generate_script_with_ollama(account_name):
             enhanced_prompt = base_prompt
     else:
         enhanced_prompt = base_prompt
-    
-    # 映画紹介の場合、過去のタイトル数を表示
-    if account_name == "映画紹介":
-        past_titles = get_past_movie_titles()
-        if past_titles:
-            print(f"🎬 過去に紹介した映画: {len(past_titles)}本")
     
     # 明確な例を含めて品質向上
     example = """例:
@@ -258,111 +321,7 @@ def generate_script_with_ollama(account_name):
                 raise ValueError("Ollama returned empty response")
             
             print(f"   ✅ Ollama応答受信 ({len(script)}文字)")
-            
-            # # 絵文字を除去（特に映画紹介で頻発するため）
-            # import re
-            # # Unicode絵文字の範囲を全てマッチ
-            # emoji_pattern = re.compile(
-            #     "["
-            #     "\U0001F600-\U0001F64F"  # 顔文字
-            #     "\U0001F300-\U0001F5FF"  # 記号とピクトグラム
-            #     "\U0001F680-\U0001F6FF"  # 交通と地図記号
-            #     "\U0001F1E0-\U0001F1FF"  # 旗
-            #     "\U00002702-\U000027B0"  # その他の記号
-            #     "\U000024C2-\U0001F251"
-            #     "]+", flags=re.UNICODE
-            # )
-            # original_length = len(script)
-            # script = emoji_pattern.sub('', script)
-            # if len(script) < original_length:
-            #     print(f"   🚫 絵文字を除去しました ({original_length - len(script)}文字削除)")
-            
-            # デバッグ: 生成された内容を表示
-            if os.getenv("DEBUG_SCRIPT"):
-                print(f"\n   === 生成された生のスクリプト ===")
-                print(script)
-                print(f"   === 生のスクリプト終了 ===\n")
-            
-            # クリーニング
-            lines = []
-            in_script = True  # 台本部分かどうかのフラグ
-            skipped_lines = []  # デバッグ用
-            
-            for line in script.split('\n'):
-                line = line.strip()
-                
-                if not line:  # 空行はスキップ
-                    continue
-                
-                # 説明セクション開始を検出したら以降をスキップ
-                if line.startswith(('*', '•')) and any(keyword in line for keyword in ['ポイント', 'フック', '説明', '冒頭', '簡潔']):
-                    skipped_lines.append(f"説明セクション検出: {line[:50]}")
-                    in_script = False
-                    break
-                
-                if not in_script:
-                    break
-                
-                # 不要な接頭辞をスキップ
-                skip_prefixes = (
-                    '台本', '以下', '例:', '---', '**【',
-                    'はい、承知', '了解', 'かしこまりました',
-                    'ポイント:', '注意:', 'メモ:', '補足:',
-                    '※', 
-                    '（画面', '(画面', '（映像', '(映像', 
-                    '（ナレーション', '(ナレーション'
-                )
-                if line.startswith(skip_prefixes):
-                    skipped_lines.append(f"接頭辞スキップ: {line[:50]}")
-                    continue
-                
-                # **で囲まれた見出しをスキップ
-                if line.startswith('**') and line.endswith('**'):
-                    skipped_lines.append(f"見出しスキップ: {line[:50]}")
-                    continue
-                
-                # ハッシュタグ行をスキップ
-                if line.startswith('#') or line.count('#') >= 3:
-                    skipped_lines.append(f"ハッシュタグスキップ: {line[:50]}")
-                    continue
-                
-                # 番号付きリストや不要な接頭辞を削除
-                if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
-                    line = line.split('.', 1)[1].strip()
-                
-                if line:
-                    lines.append(line)
-            
-            # デバッグ情報を表示
-            if len(lines) == 0 and skipped_lines:
-                print(f"   ⚠️ 全行がスキップされました。スキップ理由:")
-                for reason in skipped_lines[:5]:  # 最初の5件のみ表示
-                    print(f"      - {reason}")
-            
-            print(f"   📊 クリーニング後: {len(lines)}行")
-            
-            # 行数調整（映画紹介は柔軟に、他は10行まで）
-            max_lines = 15 if account_name == "映画紹介" else 10
-            if len(lines) > max_lines:
-                lines = lines[:max_lines]
-                print(f"   ✂️ {max_lines}行にトリミング")
-            elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライまたはエラー
-                # 生成された台本内容をログ出力
-                print(f"   📝 生成された内容:")
-                for i, line in enumerate(lines, 1):
-                    print(f"      {i}. {line[:100]}")  # 最初の100文字まで表示
-                
-                if attempt < max_retries - 1:
-                    print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
-                    raise ValueError(f"Generated only {len(lines)} valid lines (minimum 5)")
-                else:
-                    # 最終試行でも5行未満の場合はエラーで終了（補完しない）
-                    print(f"   ❌ 最終試行でも{len(lines)}行のみ。台本生成失敗。")
-                    raise ValueError(f"❌ 台本生成失敗: {len(lines)}行しか生成できませんでした（最低5行必要）")
-            # 5～10行はそのまま使用
-            
-            print(f"   ✅ 最終: {len(lines)}行")
-            return '\n'.join(lines)
+            return _clean_script_output(script, account_name, attempt, max_retries)
             
         except requests.exceptions.Timeout as e:
             print(f"   ⏱️ タイムアウト発生 (試行 {attempt + 1}/{max_retries}): {e}")
@@ -484,93 +443,7 @@ def generate_script_with_gemini(account_name):
             
             script = response.text.strip()
             print(f"   ✅ Gemini応答受信 ({len(script)}文字)")
-            
-            # デバッグ: 生成された内容を表示
-            if os.getenv("DEBUG_SCRIPT"):
-                print(f"\n   === 生成された生のスクリプト ===")
-                print(script)
-                print(f"   === 生のスクリプト終了 ===\n")
-            
-            # クリーニング
-            lines = []
-            in_script = True  # 台本部分かどうかのフラグ
-            skipped_lines = []  # デバッグ用
-            
-            for line in script.split('\n'):
-                line = line.strip()
-                
-                if not line:  # 空行はスキップ
-                    continue
-                
-                # 説明セクション開始を検出したら以降をスキップ
-                if line.startswith(('*', '•')) and any(keyword in line for keyword in ['ポイント', 'フック', '説明', '冒頭', '簡潔']):
-                    skipped_lines.append(f"説明セクション検出: {line[:50]}")
-                    in_script = False
-                    break
-                
-                if not in_script:
-                    break
-                
-                # 不要な接頭辞をスキップ
-                skip_prefixes = (
-                    '台本', '以下', '例:', '---', '**【',
-                    'はい、承知', '了解', 'かしこまりました',
-                    'ポイント:', '注意:', 'メモ:', '補足:',
-                    '※', 
-                    '（画面', '(画面', '（映像', '(映像', 
-                    '（ナレーション', '(ナレーション'
-                )
-                if line.startswith(skip_prefixes):
-                    skipped_lines.append(f"接頭辞スキップ: {line[:50]}")
-                    continue
-                
-                # **で囲まれた見出しをスキップ
-                if line.startswith('**') and line.endswith('**'):
-                    skipped_lines.append(f"見出しスキップ: {line[:50]}")
-                    continue
-                
-                # ハッシュタグ行をスキップ
-                if line.startswith('#') or line.count('#') >= 3:
-                    skipped_lines.append(f"ハッシュタグスキップ: {line[:50]}")
-                    continue
-                
-                # 番号付きリストや不要な接頭辞を削除
-                if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.')):
-                    line = line.split('.', 1)[1].strip()
-                
-                if line:
-                    lines.append(line)
-            
-            # デバッグ情報を表示
-            if len(lines) == 0 and skipped_lines:
-                print(f"   ⚠️ 全行がスキップされました。スキップ理由:")
-                for reason in skipped_lines[:5]:  # 最初の5件のみ表示
-                    print(f"      - {reason}")
-            
-            print(f"   📊 クリーニング後: {len(lines)}行")
-            
-            # 行数調整（映画紹介は柔軟に、他は10行まで）
-            max_lines = 15 if account_name == "映画紹介" else 10
-            if len(lines) > max_lines:
-                lines = lines[:max_lines]
-                print(f"   ✂️ {max_lines}行にトリミング")
-            elif len(lines) < 5:  # 5行未満は品質が悪すぎるのでリトライまたはエラー
-                # 生成された台本内容をログ出力
-                print(f"   📝 生成された内容:")
-                for i, line in enumerate(lines, 1):
-                    print(f"      {i}. {line[:100]}")  # 最初の100文字まで表示
-                
-                if attempt < max_retries - 1:
-                    print(f"   ⚠️ {len(lines)}行しか生成されませんでした。リトライします...")
-                    raise ValueError(f"Generated only {len(lines)} valid lines (minimum 5)")
-                else:
-                    # 最終試行でも5行未満の場合はエラーで終了（補完しない）
-                    print(f"   ❌ 最終試行でも{len(lines)}行のみ。台本生成失敗。")
-                    raise ValueError(f"❌ 台本生成失敗: {len(lines)}行しか生成できませんでした（最低5行必要）")
-            # 5～10行はそのまま使用
-            
-            print(f"   ✅ 最終: {len(lines)}行")
-            return '\n'.join(lines)
+            return _clean_script_output(script, account_name, attempt, max_retries)
             
         except Exception as e:
             error_type = type(e).__name__

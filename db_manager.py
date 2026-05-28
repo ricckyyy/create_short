@@ -8,10 +8,9 @@ import sqlite3
 import json
 from datetime import datetime
 from pathlib import Path
-from config import PROJECT_ROOT
+from config import DATABASE_DIR
 
-# データベースファイルパス
-DB_PATH = PROJECT_ROOT / "data" / "database" / "videos.db"
+DB_PATH = DATABASE_DIR / "videos.db"
 
 
 def get_connection():

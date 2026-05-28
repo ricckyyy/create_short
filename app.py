@@ -73,7 +73,6 @@ def generate_video_background(account_data):
         )
         
         progress_status["message"] = f"{account_data['name']}の動画を生成中..."
-        progress_status["message"] = f"{account_data['name']}の動画を生成中..."
         progress_status["progress"] = 60
         
         # 動画生成（新しいパス構造）
@@ -278,5 +277,4 @@ def get_insights(account_name):
     })
 
 if __name__ == '__main__':
-    init_directories()
     app.run(debug=True, host='0.0.0.0', port=5001)

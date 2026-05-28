@@ -161,7 +161,7 @@ def init_directories():
         UPLOAD_DIR,
         UPLOAD_QUEUE_DIR,
         UPLOAD_HISTORY_DIR,
-        DATABASE_DIR,  # データベースディレクトリを追加
+        DATABASE_DIR,
     ]
     
     for directory in directories:
